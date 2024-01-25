@@ -1,0 +1,16 @@
+version: "3.1"
+
+services:
+  sumo-1-14:
+    build:
+      context: .
+      dockerfile: docker_files/Dockerfile_dev
+    
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    volumes:
+      - .:/dev-home/
+      - /media/DATA/mitsuzaw/:/media/DATA/mitsuzaw/
+      - ~/.ssh/:/dev/.ssh/:ro      
+    user: mitsuzaw
+  
