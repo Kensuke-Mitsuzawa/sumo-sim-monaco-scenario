@@ -11,6 +11,7 @@ from dataclasses import dataclass, asdict
 
 import toml
 import dacite
+import json
 
 from pathlib import Path
 
@@ -29,8 +30,8 @@ Png. file of the network.
 @dataclass
 class RootConfig:
     path_sumo_net_xml: str
-    path_output_png: str
-    path_weights_json: ty.Optional[str] = None
+    # path_output_png: str
+    # path_weights_json: ty.Optional[str] = None
     
     size_fig_width: int = 30
     size_fig_height: int = 30
@@ -51,7 +52,7 @@ class RoadLaneObject:
 
 @dataclass
 class RoadWeights:
-    __slots__ = ['lane_id', 'weights']
+    __slots__ = ['lane_id', 'weight']
     lane_id: str
     weight: float
     
@@ -132,15 +133,16 @@ def __parse_road_network(path_sumo_net_xml: Path) -> ty.List[RoadLaneObject]:
     return seq_road_id_obj
 
 
-def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject], 
+def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
+                   path_output_png: Path, 
                    config_obj: RootConfig,
-                   road_weights: ty.List[RoadWeights] = None):
+                   road_weights: ty.Optional[ty.List[RoadWeights]] = None):
     f, ax = plt.subplots(figsize=(config_obj.size_fig_width, config_obj.size_fig_height))
     
     if road_weights is not None:
-        lane_id2weights = {_l_id: _w for _l_id, _w in road_weights.items()}
+        lane_id2weights = {__obj.lane_id: __obj.weight for __obj in road_weights}
     else:
-        lane_id2weights = None
+        lane_id2weights = {}
     # end if
     
     for __lane_obj in tqdm(seq_road_lane_obj):
@@ -176,14 +178,18 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
             print(__lane_obj.allow)
     # end for
     
-    f.savefig(config_obj.path_output_png)
+    f.savefig(path_output_png.as_posix())
 
 
-def main(path_config: Path):
+def main(path_config: Path,
+         path_output_png: Path,
+         path_weights_json: ty.Optional[Path] = None):
     assert path_config.exists(), f"Path not found: {path_config}"
     
     __config_obj = toml.load(path_config)
     config_obj = dacite.from_dict(data_class=RootConfig, data=__config_obj)
+    
+    path_output_png.parent.mkdir(parents=True, exist_ok=True)
     
     config_obj.path_output_png = Path(config_obj.path_output_png)
     config_obj.path_output_png.parent.mkdir(parents=True, exist_ok=True)
@@ -191,16 +197,19 @@ def main(path_config: Path):
     path_sumo_net_xml = Path(config_obj.path_sumo_net_xml)
     assert path_sumo_net_xml.exists(), f"Path not found: {path_sumo_net_xml}"
     
-    if config_obj.path_weights_json is not None:
-        logger.info(f"Loading weights from {config_obj.path_weights_json}")
-        config_obj.path_weights_json = Path(config_obj.path_weights_json)
-        seq_road_weights = __load_road_weights(config_obj.path_weights_json)
+    if path_weights_json is not None:
+        logger.info(f"Loading weights from {path_weights_json}")
+        seq_road_weights = __load_road_weights(Path(path_weights_json))
     else:
         seq_road_weights = None
     # end if
     
     seq_road_id_obj = __parse_road_network(path_sumo_net_xml)
-    __plot_netowrk(seq_road_id_obj, config_obj, seq_road_weights)
+    __plot_netowrk(
+        seq_road_lane_obj=seq_road_id_obj,
+        path_output_png=path_output_png,
+        config_obj=config_obj, 
+        road_weights=seq_road_weights)
 
 
 if __name__ == "__main__":
@@ -208,8 +217,13 @@ if __name__ == "__main__":
     
     opt = ArgumentParser()
     opt.add_argument('--path_config', type=str, required=True)
+    opt.add_argument('--path_out_png', type=str, required=True)
+    opt.add_argument('--path_json', type=str, required=False, default=None)    
     # __path_config = Path("/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/configurations/test_visualization.toml")
     
     __args = opt.parse_args()
     
-    main(__args.path_config)
+    main(
+        path_config=Path(__args.path_config),
+        path_output_png=Path(__args.path_out_png),
+        path_weights_json=__args.path_json)
