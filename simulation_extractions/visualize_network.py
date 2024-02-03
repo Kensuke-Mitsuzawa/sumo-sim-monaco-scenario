@@ -190,18 +190,17 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
             # Extract the x and y coordinates of the polygon
             x, y = polygon.exterior.xy
         # end if
-        
-        # putting lane-id, weights, and coordinates of the road.
-        seq_lane_ids_with_coordinate.append(dict(
-            lane_id=__lane_obj.lane_id,
-            weights=lane_id2weights.get(__lane_obj.lane_id, 0.0),
-            coordinate_tuples=list(zip(x, y))
-        ))
-        
+                
         if __lane_obj.lane_id in lane_id2weights:
             __color = 'red'
             __linewidth = lane_id2weights[__lane_obj.lane_id] + 5.0
             logger.info(f"Use weights value -> lane_id: {__lane_obj.lane_id}, weight: {lane_id2weights[__lane_obj.lane_id]}")
+            # putting lane-id, weights, and coordinates of the road.
+            seq_lane_ids_with_coordinate.append(dict(
+                lane_id=__lane_obj.lane_id,
+                weights=lane_id2weights.get(__lane_obj.lane_id, 0.0),
+                coordinate_tuples=list(zip(x, y))
+            ))
         else:
             __color = 'black'
             __linewidth = 0.5
