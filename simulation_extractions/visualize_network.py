@@ -180,6 +180,7 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
         # end if
         
         __index_sort = np.argsort(x)
+        # __index_sort = np.lexsort((x, y))
         _x_sorted = np.array(x)[__index_sort]
         _y_sorted = np.array(y)[__index_sort]
         
