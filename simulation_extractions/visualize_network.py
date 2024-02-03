@@ -150,7 +150,27 @@ def __parse_road_network(path_sumo_net_xml: Path,
 def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
                    path_output_png: Path, 
                    config_obj: RootConfig,
-                   road_weights: ty.Optional[ty.List[RoadWeights]] = None):
+                   road_weights: ty.Optional[ty.List[RoadWeights]] = None,
+                   path_out_json: ty.Optional[Path] = None):
+    """Plotting the network.
+    
+    Parameters
+    ----------
+    seq_road_lane_obj: ty.List[RoadLaneObject]
+        The list of lane objects.
+    path_output_png: Path
+        The output path of the png file.
+    config_obj: RootConfig
+        The configuration object.
+    road_weights: ty.Optional[ty.List[RoadWeights]]
+        The list of weights for the lanes.
+    path_out_json: ty.Optional[Path]
+        The output path of the json file.
+        
+    Returns
+    -------
+    None
+    """
     f, ax = plt.subplots(figsize=(config_obj.size_fig_width, config_obj.size_fig_height))
     
     if road_weights is not None:
@@ -158,7 +178,8 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
     else:
         lane_id2weights = {}
     # end if
-        
+     
+    seq_lane_ids_with_coordinate = []
     for __lane_obj in tqdm(seq_road_lane_obj):
         # Create a Shapely polygon object
         if len(__lane_obj.polygon_coords) == 2:
@@ -169,6 +190,13 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
             # Extract the x and y coordinates of the polygon
             x, y = polygon.exterior.xy
         # end if
+        
+        # putting lane-id, weights, and coordinates of the road.
+        seq_lane_ids_with_coordinate.append(dict(
+            lane_id=__lane_obj.lane_id,
+            weights=lane_id2weights.get(__lane_obj.lane_id, 0.0),
+            coordinate_tuples=list(zip(x, y))
+        ))
         
         if __lane_obj.lane_id in lane_id2weights:
             __color = 'red'
@@ -201,12 +229,18 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
             print(__lane_obj.allow)
     # end for
     
+    if path_out_json is not None:
+        f_json_weights = open(path_out_json, 'w')
+        f_json_weights.write(json.dumps(seq_lane_ids_with_coordinate, indent=4))
+    # end if
+    
     f.savefig(path_output_png.as_posix())
 
 
 def main(path_config: Path,
          path_output_png: Path,
-         path_weights_json: ty.Optional[Path] = None):
+         path_weights_json: ty.Optional[Path] = None,
+         path_out_json: ty.Optional[Path] = None):
     assert path_config.exists(), f"Path not found: {path_config}"
     
     __config_obj = toml.load(path_config)
@@ -229,7 +263,8 @@ def main(path_config: Path,
         seq_road_lane_obj=seq_road_id_obj,
         path_output_png=path_output_png,
         config_obj=config_obj, 
-        road_weights=seq_road_weights)
+        road_weights=seq_road_weights,
+        path_out_json=path_out_json)
 
 
 if __name__ == "__main__":
@@ -238,6 +273,7 @@ if __name__ == "__main__":
     opt = ArgumentParser()
     opt.add_argument('--path_config', type=str, required=True)
     opt.add_argument('--path_out_png', type=str, required=True)
+    opt.add_argument('--path_out_json', type=str, required=False)
     opt.add_argument('--path_json', type=str, required=False, default=None)    
     # __path_config = Path("/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/configurations/test_visualization.toml")
     
@@ -246,4 +282,5 @@ if __name__ == "__main__":
     main(
         path_config=Path(__args.path_config),
         path_output_png=Path(__args.path_out_png),
-        path_weights_json=__args.path_json)
+        path_weights_json=__args.path_json,
+        path_out_json= __args.path_out_json)

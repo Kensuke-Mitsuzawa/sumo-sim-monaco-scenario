@@ -20,3 +20,17 @@ A toml file is necessary.
 
 `task_pipeline.py` is an interface.
 
+# Map Visualization
+
+`visualize_network.py` is the CUI interface for visualizing the study map.
+
+The example output is ![](./map_output.png).
+
+This script is able to highlight specific roads. You need a json file having a structure below,
+
+```
+[
+    [lane-id: str, weight: float]
+]
+```
+
