@@ -1,3 +1,1 @@
-path_sumo_net_xml = "/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/less_capacity_config/in/most.net.xml"
-path_output_png = "/tmp/most_net.png"
-path_weights_json = ""
+path_sumo_net_xml = "/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/less_capacity_config/in/most.net.xml"

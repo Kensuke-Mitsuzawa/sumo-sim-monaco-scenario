@@ -190,10 +190,7 @@ def main(path_config: Path,
     config_obj = dacite.from_dict(data_class=RootConfig, data=__config_obj)
     
     path_output_png.parent.mkdir(parents=True, exist_ok=True)
-    
-    config_obj.path_output_png = Path(config_obj.path_output_png)
-    config_obj.path_output_png.parent.mkdir(parents=True, exist_ok=True)
-    
+        
     path_sumo_net_xml = Path(config_obj.path_sumo_net_xml)
     assert path_sumo_net_xml.exists(), f"Path not found: {path_sumo_net_xml}"
     
