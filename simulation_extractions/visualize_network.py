@@ -1,11 +1,10 @@
 import typing as ty
 import xml.etree.ElementTree as ET
 import logzero
-
 from tqdm import tqdm
 
-import matplotlib.patches as patches
-import geopandas as gpd
+import numpy as np
+
 from shapely.geometry import Polygon, LineString
 import matplotlib.pyplot as plt
 
@@ -160,45 +159,45 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
         lane_id2weights = {}
     # end if
         
-    polygons = []
     for __lane_obj in tqdm(seq_road_lane_obj):
         # Create a Shapely polygon object
         if len(__lane_obj.polygon_coords) == 2:
-            poly_obj = LineString(__lane_obj.polygon_coords)
-            # x = [__lane_obj.polygon_coords[0][0], __lane_obj.polygon_coords[1][0]]
-            # y = [__lane_obj.polygon_coords[0][1], __lane_obj.polygon_coords[1][1]]
+            x = [__lane_obj.polygon_coords[0][0], __lane_obj.polygon_coords[1][0]]
+            y = [__lane_obj.polygon_coords[0][1], __lane_obj.polygon_coords[1][1]]
         else:
-            poly_obj = Polygon(__lane_obj.polygon_coords)
+            polygon = Polygon(__lane_obj.polygon_coords)
+            # Extract the x and y coordinates of the polygon
+            x, y = polygon.exterior.xy
         # end if
-        polygons.append(poly_obj)
         
-        # Extract the x and y coordinates of the polygon
-        # x, y = polygon.exterior.xy
+        if __lane_obj.lane_id in lane_id2weights:
+            __color = 'red'
+            __linewidth = lane_id2weights[__lane_obj.lane_id] + 5.0
+            logger.info(f"Use weights value -> lane_id: {__lane_obj.lane_id}, weight: {lane_id2weights[__lane_obj.lane_id]}")
+        else:
+            __color = 'black'
+            __linewidth = 0.5
         # end if
-        # Create a GeoSeries from your polygons
-    # end for
-    g = gpd.GeoSeries(polygons)
-    # Plot your GeoSeries
-    g.plot(edgecolor='k', ax=ax)
         
-        # poly = patches.Polygon(__lane_obj.polygon_coords, closed=True, fill=None, edgecolor='k')
-        # ax.add_patch(poly)        
+        __index_sort = np.argsort(x)
+        _x_sorted = np.array(x)[__index_sort]
+        _y_sorted = np.array(y)[__index_sort]
         
-        # # Plot the polygon
-        # if __lane_obj.is_autoroute:
-        #     # l'autoroute, A8
-        #     ax.plot(x, y, color=__color, linestyle='solid', marker='*', linewidth=__linewidth)
-        # elif set(__lane_obj.allow) == set(['pedestrian', 'bicycle']) or set(__lane_obj.allow) == set(['pedestrian']):
-        #     # comment: pedestrian and bicycle -> dotted line
-        #     ax.plot(x, y, color=__color, linestyle=':', linewidth=__linewidth)
-        # elif len(__lane_obj.allow) == 0:
-        #     # les roues normal.
-        #     ax.plot(x, y, color=__color, linestyle='solid', linewidth=__linewidth)
-        # elif 'rail' in __lane_obj.allow:
-        #     # comment: the rail line is dashdot and ">"
-        #     ax.plot(x, y, color=__color, linestyle='dashdot', marker='>', linewidth=__linewidth)
-        # else:
-        #     print(__lane_obj.allow)
+        # Plot the polygon
+        if __lane_obj.is_autoroute:
+            # l'autoroute A8 avec
+            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='solid', marker='*', linewidth=__linewidth)
+        if set(__lane_obj.allow) == set(['pedestrian', 'bicycle']) or set(__lane_obj.allow) == set(['pedestrian']):
+            # pietons et velos -> dotted line style
+            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle=':', linewidth=__linewidth)
+        elif len(__lane_obj.allow) == 0:
+            # les roues generiques -> solid line style
+            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='solid', linewidth=__linewidth)
+        elif 'rail' in __lane_obj.allow:
+            # la rue de rail -> dash line style
+            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='dashdot', marker='>', linewidth=__linewidth)
+        else:
+            print(__lane_obj.allow)
     # end for
     
     f.savefig(path_output_png.as_posix())
