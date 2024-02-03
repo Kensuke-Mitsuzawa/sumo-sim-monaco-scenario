@@ -4,7 +4,9 @@ import logzero
 
 from tqdm import tqdm
 
-from shapely.geometry import Polygon
+import matplotlib.patches as patches
+import geopandas as gpd
+from shapely.geometry import Polygon, LineString
 import matplotlib.pyplot as plt
 
 from dataclasses import dataclass, asdict
@@ -41,13 +43,15 @@ class RootConfig:
 
 @dataclass
 class RoadLaneObject:
-    __slots__ = ['lane_id', 'polygon_coords', 'lane_index', 'speed_limit', 'allow']
+    __slots__ = ['lane_id', 'polygon_coords', 'lane_index', 'speed_limit', 'allow', 'lane_type', 'is_autoroute']
     
     lane_id: str
     polygon_coords: ty.List[ty.Tuple[float, float]]
     lane_index: int
     speed_limit: float
     allow: ty.List[str]
+    lane_type: ty.Optional[str]
+    is_autoroute: bool
 
 
 @dataclass
@@ -93,13 +97,21 @@ def __parse_polygon_coords(shape_xml_attribute: str) -> ty.List[ty.Tuple[float, 
     return seq_coords
     
 
-def __parse_road_network(path_sumo_net_xml: Path) -> ty.List[RoadLaneObject]:
+def __parse_road_network(path_sumo_net_xml: Path, 
+                         prefix_auto_route: str = 'highway.motorway') -> ty.List[RoadLaneObject]:
     """Extracting the lane information from the given SUMO net xml file.
     """
     seq_road_id_obj = []
     for event, elem in tqdm(ET.iterparse(path_sumo_net_xml)):
         elem_tag = elem.tag
         if elem_tag == 'edge':
+            __edge_attributes = elem.attrib
+            __edge_type = __edge_attributes['type'] if 'type' in __edge_attributes else None
+            if __edge_type is not None:
+                __is_auto_route = True if prefix_auto_route in __edge_type else False 
+            else:
+                __is_auto_route = False
+            
             __seq_lane_elem = elem.findall('lane')
             for __lane_elem_obj in __seq_lane_elem:
                 __lane_attrib_obj = __lane_elem_obj.attrib
@@ -121,7 +133,9 @@ def __parse_road_network(path_sumo_net_xml: Path) -> ty.List[RoadLaneObject]:
                     polygon_coords=__seq_shape,
                     lane_index=__lane_index,
                     speed_limit=__speed_limit,
-                    allow=__agent_allow
+                    allow=__agent_allow,
+                    lane_type=__edge_type,
+                    is_autoroute=__is_auto_route
                 )
                 seq_road_id_obj.append(__road_lane_obj)
             # end for
@@ -131,6 +145,7 @@ def __parse_road_network(path_sumo_net_xml: Path) -> ty.List[RoadLaneObject]:
     logger.info(f"Number of lanes: {len(seq_road_id_obj)}")
     
     return seq_road_id_obj
+
 
 
 def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
@@ -144,38 +159,46 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
     else:
         lane_id2weights = {}
     # end if
-    
+        
+    polygons = []
     for __lane_obj in tqdm(seq_road_lane_obj):
         # Create a Shapely polygon object
         if len(__lane_obj.polygon_coords) == 2:
-            x = [__lane_obj.polygon_coords[0][0], __lane_obj.polygon_coords[1][0]]
-            y = [__lane_obj.polygon_coords[0][1], __lane_obj.polygon_coords[1][1]]
+            poly_obj = LineString(__lane_obj.polygon_coords)
+            # x = [__lane_obj.polygon_coords[0][0], __lane_obj.polygon_coords[1][0]]
+            # y = [__lane_obj.polygon_coords[0][1], __lane_obj.polygon_coords[1][1]]
         else:
-            polygon = Polygon(__lane_obj.polygon_coords)
-            # Extract the x and y coordinates of the polygon
-            x, y = polygon.exterior.xy
+            poly_obj = Polygon(__lane_obj.polygon_coords)
         # end if
+        polygons.append(poly_obj)
         
-        if __lane_obj.lane_id in lane_id2weights:
-            __color = 'red'
-            __linewidth = lane_id2weights[__lane_obj.lane_id] + 2.0
-            logger.info(f"Use weights value -> lane_id: {__lane_obj.lane_id}, weight: {lane_id2weights[__lane_obj.lane_id]}")
-        else:
-            __color = 'black'
-            __linewidth = 0.5
+        # Extract the x and y coordinates of the polygon
+        # x, y = polygon.exterior.xy
         # end if
+        # Create a GeoSeries from your polygons
+    # end for
+    g = gpd.GeoSeries(polygons)
+    # Plot your GeoSeries
+    g.plot(edgecolor='k', ax=ax)
         
-        # Plot the polygon
-        if set(__lane_obj.allow) == set(['pedestrian', 'bicycle']) or set(__lane_obj.allow) == set(['pedestrian']):
-            # comment: pedestrian and bicycle -> dashed, o
-            ax.plot(x, y, color=__color, linestyle='dashed', marker='o', linewidth=__linewidth)
-        elif len(__lane_obj.allow) == 0:
-            ax.plot(x, y, color=__color, linestyle='solid', linewidth=__linewidth)
-        elif 'rail' in __lane_obj.allow:
-            # comment: the rail line is dashdot and >
-            ax.plot(x, y, color=__color, linestyle='dashdot', marker='>', linewidth=__linewidth)
-        else:
-            print(__lane_obj.allow)
+        # poly = patches.Polygon(__lane_obj.polygon_coords, closed=True, fill=None, edgecolor='k')
+        # ax.add_patch(poly)        
+        
+        # # Plot the polygon
+        # if __lane_obj.is_autoroute:
+        #     # l'autoroute, A8
+        #     ax.plot(x, y, color=__color, linestyle='solid', marker='*', linewidth=__linewidth)
+        # elif set(__lane_obj.allow) == set(['pedestrian', 'bicycle']) or set(__lane_obj.allow) == set(['pedestrian']):
+        #     # comment: pedestrian and bicycle -> dotted line
+        #     ax.plot(x, y, color=__color, linestyle=':', linewidth=__linewidth)
+        # elif len(__lane_obj.allow) == 0:
+        #     # les roues normal.
+        #     ax.plot(x, y, color=__color, linestyle='solid', linewidth=__linewidth)
+        # elif 'rail' in __lane_obj.allow:
+        #     # comment: the rail line is dashdot and ">"
+        #     ax.plot(x, y, color=__color, linestyle='dashdot', marker='>', linewidth=__linewidth)
+        # else:
+        #     print(__lane_obj.allow)
     # end for
     
     f.savefig(path_output_png.as_posix())
