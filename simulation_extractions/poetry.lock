@@ -2982,6 +2982,16 @@ docs = ["matplotlib", "numpydoc (==1.1.*)", "sphinx", "sphinx-book-theme", "sphi
 test = ["pytest", "pytest-cov"]
 
 [[package]]
+name = "simplekml"
+version = "1.3.6"
+description = "A Simple KML creator"
+optional = false
+python-versions = "*"
+files = [
+    {file = "simplekml-1.3.6.tar.gz", hash = "sha256:cda687be2754395fcab664e908ebf589facd41e8436d233d2be37a69efb1c536"},
+]
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -3043,6 +3053,20 @@ pure-eval = "*"
 
 [package.extras]
 tests = ["cython", "littleutils", "pygments", "pytest", "typeguard"]
+
+[[package]]
+name = "sumolib"
+version = "1.19.0"
+description = "Python helper modules to read networks, parse output data and do other useful stuff related to the traffic simulation Eclipse SUMO"
+optional = false
+python-versions = "*"
+files = [
+    {file = "sumolib-1.19.0-py3-none-any.whl", hash = "sha256:e374a1b756c25b740081f470e4133c754e5d7238359a09880e3547599d2e8aa5"},
+    {file = "sumolib-1.19.0.tar.gz", hash = "sha256:c093fc430415d97d43462e60e9d13653b4f58207e6ee9e9bc110222811948568"},
+]
+
+[package.extras]
+visualization = ["matplotlib"]
 
 [[package]]
 name = "tblib"
@@ -3355,4 +3379,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "baa68469b7ffb2300ebaa73ab2f6857ccf71cb9fd15668407d9537ee019a5d26"
+content-hash = "262de81d54ce811f5e35f84e48fe5a0b56be69a5a873e789c1df777a04d0cb9e"
