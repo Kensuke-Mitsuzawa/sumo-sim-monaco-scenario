@@ -1,0 +1,37 @@
+[resources]
+    path_root = '/tmp/MoSTScenario-out'
+
+    path_dir_sumo_base_x = '/dev-home/simulation_extractions/sumo_configs/base/standard_config'
+    path_dir_sumo_base_y = '/dev-home/simulation_extractions/sumo_configs/base/less_capacity_config'
+
+    name_sumo_cfg_x = 'sumo_cfg.cfg'
+    name_sumo_cfg_y = 'sumo_cfg.cfg'
+
+    name_fcd_file = 'fcd.output.xml'
+
+    dir_name_sumo_config = 'sumo_cfg'
+    dir_name_postprocess = 'postprocess'
+    dir_name_sumo_output = 'sumo_output'
+
+    file_name_intermediate_jsonl = 'extraction.jsonl'
+    file_name_array_lane_observation = 'load_observation.npz'
+    file_name_array_agent_position = 'agent_position.npz'
+
+
+[sumo_run]
+    path_sumo_home = '/opt/sumo/sumo-1_14_0'
+
+    iteration = 1
+    is_update_seed = false
+
+[dask_config]
+    is_use_dask = false
+
+    n_workers = 2
+    n_threads_per_worker = 1
+    host_scheduler = ''
+
+[postprocessing]
+    is_delete_fcd = true
+    is_delete_intermediate_json = true
+
