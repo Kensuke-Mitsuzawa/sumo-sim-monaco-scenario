@@ -192,7 +192,7 @@ def main(toml_config: Path, is_run_test: bool = False):
     run_simulation.run_simulations(
         sumo_configurations=seq_sumo_config_to_be_run,
         dask_client=dask_client,
-        path_sumo_home=Path(config_type.sumo_run.path_sumo_home)
+        path_sumo_home=Path(config_type.sumo_run.path_sumo_home),
     )
     
     # parsing fcd file

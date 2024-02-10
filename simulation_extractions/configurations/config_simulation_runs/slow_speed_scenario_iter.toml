@@ -1,8 +1,8 @@
 [resources]
-    path_root = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/slow_speed_scenario_iter'
+    path_root = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/slow_speed_scenario'
 
-    path_dir_sumo_base_x = '/dev-home/simulation_extractions/sumo_configs/base/standard_config'
-    path_dir_sumo_base_y = '/dev-home/simulation_extractions/sumo_configs/base/slow_speed_scenario'
+    path_dir_sumo_base_x = '/dev-home/simulation_extractions/sumo_configs/base/until_afternoon/original_config'
+    path_dir_sumo_base_y = '/dev-home/simulation_extractions/sumo_configs/base/until_afternoon/slow_speed'
 
     name_sumo_cfg_x = 'sumo_cfg.cfg'
     name_sumo_cfg_y = 'sumo_cfg.cfg'
@@ -21,13 +21,13 @@
 [sumo_run]
     path_sumo_home = '/opt/sumo/sumo-1_14_0/bin'
 
-    iteration = 3 
+    iteration = 1
     is_update_seed = true
 
 [dask_config]
-    is_use_dask = true
+    is_use_dask = false
 
-    n_workers = 10
+    n_workers = 5
     n_threads_per_worker = 5
     host_scheduler = ''
 

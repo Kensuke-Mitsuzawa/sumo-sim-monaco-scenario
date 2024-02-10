@@ -26,7 +26,7 @@ def __run_simulation(path_sumo_cfg: Path,
     import traci
     pbar = tqdm()
 
-    sumoCmd = ['sumo', '-c', path_sumo_cfg]
+    sumoCmd = [f'{path_sumo_home}/sumo', '-c', path_sumo_cfg]
     traci.start(sumoCmd)
 
     time_start: float = traci.simulation.getTime()
