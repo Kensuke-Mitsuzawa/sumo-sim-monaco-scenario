@@ -8,6 +8,7 @@ import simplekml
 import dataclasses
 import jsonlines
 import math
+import pandas as pd
 
 import xml.etree.ElementTree as ET
 
@@ -119,7 +120,7 @@ def get_junction_position_wgs84(dict_nodeID2node: ty.Dict[str, Node],
     return lat, lon
 
 
-def __get_simulation_world_time(current_timestamp: int) -> str:
+def __get_simulation_world_time(current_timestamp: float) -> str:
     """Get the simulation world time from the current timestamp.
     """
     hours = math.floor(current_timestamp / 60 / 60)
@@ -134,9 +135,10 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
                                      net: sumolib.net.Net,
                                      export_geofile_format: str,
                                      simulation_start_time: int,
+                                     time_time_step: float,
                                      n_time_bucket: int,
                                      date_timestamp: ty.Optional[datetime.date] = None):
-    assert export_geofile_format in ['kepler.gl', 'google-earth'], f'Unknown export_geofile_format: {export_geofile_format}'
+    assert export_geofile_format in ['kepler.gl-csv', 'kepler.gl-geojson', 'google-earth'], f'Unknown export_geofile_format: {export_geofile_format}'
     
     logger.debug(f'loading weight file: {path_weight_jsonl}')
     with jsonlines.open(path_weight_jsonl.as_posix()) as reader:
@@ -144,8 +146,8 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
     # end with
     logger.info(f'N(weights) = {len(weight_file_content)}')
     
-    seq_ids_node = [t_score for t_score in weight_file_content if ':' in t_score['lane_id']]
-    seq_ids_lanes = [t_score for t_score in weight_file_content if ':' not in t_score['lane_id']]
+    # seq_ids_node = [t_score for t_score in weight_file_content if ':' in t_score['lane_id']]
+    # seq_ids_lanes = [t_score for t_score in weight_file_content if ':' not in t_score['lane_id']]
     
     kml = simplekml.Kml()
     seq_geojson_obj = []
@@ -164,16 +166,16 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
         else:
             _type_object = 'lane'
         # end if
-        assert _t_position is not None, f'No position found for {_lane_id_orig}'
         
         # define a timestamp. Use time-bucket
         _i_time_bucket: int = weight_obj['time_bucket']
-        _timestep_bucket_start = simulation_start_time + (_i_time_bucket * n_time_bucket)
+        _timestep_bucket_start = simulation_start_time + (_i_time_bucket * n_time_bucket * time_time_step)
         _current_hour_min = __get_simulation_world_time(_timestep_bucket_start)
         _date_timestamp_bucket_start = f'{date_} {_current_hour_min}'
         
         # get the description
         _description = weight_obj['label']
+        _value = weight_obj['weight']
         
         if _type_object == 'junction':
             __junction_id = _lane_id_orig.split('_')[0].strip(':')
@@ -185,15 +187,26 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
             # define a URL link to Google Map.
             _gmap_url = f'https://www.google.com/maps/place/{_lat},{_lon}'
             
-            if export_geofile_format == 'kepler.gl':
+            if export_geofile_format == 'kepler.gl-geojson':
                 __point = geojson.Point((float(_lon), float(_lat)))
                 __prop = dict(
-                    google_map_link=_gmap_url,
+                    value=_value,
+                    # google_map_link=_gmap_url,
                     description=_description,
                     time_bucket=_i_time_bucket,
                     timestamp=_date_timestamp_bucket_start)
                 _point_info = geojson.Feature(geometry=__point, properties=__prop)
                 seq_geojson_obj.append(_point_info)
+            elif export_geofile_format == 'kepler.gl-csv':
+                __point = geojson.Point((float(_lon), float(_lat)))
+                __prop = dict(
+                    geojson=geojson.dumps(__point),
+                    value=_value,
+                    # google_map_link=_gmap_url,
+                    description=_description,
+                    time_bucket=_i_time_bucket,
+                    timestamp=_date_timestamp_bucket_start)
+                seq_geojson_obj.append(__prop)
             elif export_geofile_format == 'google-earth':
                 raise NotImplementedError('Google Earth export is not implemented yet.')            
                 # kml.newpoint(name=_lane_id_orig, 
@@ -213,15 +226,31 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
             _gmap_url = f'https://www.google.com/maps/place/{_lat},{_lon}'
             
             
-            if export_geofile_format == 'kepler.gl':
-                __shape = geojson.MultiLineString(_t_position)
+            if export_geofile_format == 'kepler.gl-geojson':
+                _t_position_lon_lat = [(v[1], v[0]) for v in _t_position]
+                __shape = geojson.Polygon(_t_position_lon_lat)
                 __prop = dict(
-                    google_map_link=_gmap_url,
+                    id=_lane_id_orig,
+                    value=_value,
+                    # google_map_link=_gmap_url,
                     description=_description,
                     time_bucket=_i_time_bucket,
                     timestamp=_date_timestamp_bucket_start)
                 __shape_info = geojson.Feature(geometry=__shape, properties=__prop)
                 seq_geojson_obj.append(__shape_info)
+            elif export_geofile_format == 'kepler.gl-csv':
+                _t_position_lon_lat = [(v[1], v[0]) for v in _t_position]
+                # __shape = geojson.Polygon(_t_position_lon_lat)
+                __shape = geojson.Point((_t_position_lon_lat[0][0], _t_position_lon_lat[0][1]))
+                __prop = dict(
+                    id=_lane_id_orig,
+                    geojson=geojson.dumps(__shape),
+                    value=_value,
+                    # google_map_link=_gmap_url,
+                    description=_description,
+                    time_bucket=_i_time_bucket,
+                    timestamp=_date_timestamp_bucket_start)
+                seq_geojson_obj.append(__prop)                
             elif export_geofile_format == 'google-earth':
                 raise NotImplementedError('Google Earth export is not implemented yet.')
                 # kml.newpolygon(
@@ -235,8 +264,11 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
             raise ValueError(f'Unknown type object: {_type_object}')
         # end if
     # end for
-        
-    if export_geofile_format == 'kepler.gl':
+      
+    if export_geofile_format == 'kepler.gl-csv':
+        pd.DataFrame(seq_geojson_obj).to_csv(path_output_geo_file, index=False, header=True)
+        logger.debug(f'CSV file written to {path_output_geo_file}')        
+    elif export_geofile_format == 'kepler.gl-geojson':
         with open(path_output_geo_file, 'w') as f:
             geojson.dump(geojson.FeatureCollection(seq_geojson_obj), f)
         logger.debug(f'GeoJSON file written to {path_output_geo_file}')
@@ -267,7 +299,7 @@ def extract_simulation_time(path_sumo_sim_xml) -> ty.Tuple[int, int, float]:
         if element_name == 'time':
             _time_start = elem.find('begin').get('value')
             _time_end = elem.find('end').get('value')
-            _time_step = elem.find('step').get('value')
+            _time_step = elem.find('step-length').get('value')
         # end if
     # end for
     
@@ -315,18 +347,20 @@ def main(path_sumo_sim_xml: Path,
         net=net,
         export_geofile_format=export_geofile_format,
         n_time_bucket=n_time_bucket,
-        date_timestamp=datetime.date.fromtimestamp(sim_time_start)
+        date_timestamp=datetime.date.fromtimestamp(sim_time_start),
+        simulation_start_time=sim_time_start,
+        time_time_step=time_time_step
     )
 
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
     
-    path_sumo_sim_xml = Path()
-    path_sumo_net_xml = Path()
-    path_weight_jsonl = Path() 
-    path_output_geo_file = Path()
-    export_geofile_format = 'kepler.gl'
+    path_sumo_sim_xml = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/sumo_cfg.cfg')
+    path_sumo_net_xml = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/in/most.net.xml')
+    path_weight_jsonl = Path('/home/kensuke_mit/sumo-sim-outputs/aggregation.jsonl') 
+    path_output_geo_file = Path('/home/kensuke_mit/sumo-sim-outputs/aggregation.csv')
+    export_geofile_format = 'kepler.gl-csv'
     n_time_bucket = 600
     
     main(
