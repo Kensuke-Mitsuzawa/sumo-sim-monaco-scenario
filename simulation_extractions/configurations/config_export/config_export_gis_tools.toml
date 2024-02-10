@@ -1,0 +1,6 @@
+path_sumo_sim_xml '/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/sumo_cfg.cfg'
+path_sumo_net_xml = '/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/in/most.net.xml'
+path_weight_jsonl = '/home/kensuke_mit/sumo-sim-outputs/aggregation.jsonl'
+path_output_geo_file = '/home/kensuke_mit/sumo-sim-outputs/aggregation.csv'
+export_geofile_format = 'kepler.gl-csv'
+n_time_bucket = 600

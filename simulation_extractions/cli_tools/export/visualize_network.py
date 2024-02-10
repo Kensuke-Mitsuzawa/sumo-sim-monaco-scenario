@@ -2,6 +2,7 @@ import typing as ty
 import xml.etree.ElementTree as ET
 import logzero
 from tqdm import tqdm
+import jsonlines
 
 import numpy as np
 
@@ -67,16 +68,18 @@ def __load_road_weights(path_weights_json: Path) -> ty.List[RoadWeights]:
     """
     assert path_weights_json.exists(), f"Path not found: {path_weights_json}"
     
-    with path_weights_json.open(mode='r') as f:
-        seq_weights = json.loads(f.read())
+    with jsonlines.open(path_weights_json, mode='r') as f:
+        seq_weights = [__r for __r in f]
     # end with
     
     seq_road_weights = []
     for __t_lane_id_weight in seq_weights:
-        assert len(__t_lane_id_weight) == 2, f"Invalid format: {__t_lane_id_weight}"
-        assert isinstance(__t_lane_id_weight[0], str), f"Invalid format: {__t_lane_id_weight}"
-        assert isinstance(__t_lane_id_weight[1], float), f"Invalid format: {__t_lane_id_weight}"
-        seq_road_weights.append(RoadWeights(lane_id=__t_lane_id_weight[0], weight=__t_lane_id_weight[1]))
+        assert isinstance(__t_lane_id_weight, dict), f"Invalid format: {__t_lane_id_weight}"
+        assert 'lane_id' in __t_lane_id_weight and isinstance(__t_lane_id_weight['lane_id'], str), f"Invalid format: {__t_lane_id_weight}"
+        assert 'weight' in __t_lane_id_weight and isinstance(__t_lane_id_weight['weight'], float), f"Invalid format: {__t_lane_id_weight}"
+        seq_road_weights.append(RoadWeights(
+            lane_id=__t_lane_id_weight['lane_id'], 
+            weight=__t_lane_id_weight['weight']))
     # end for 
     
     return seq_road_weights
@@ -238,8 +241,7 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[RoadLaneObject],
 
 def main(path_config: Path,
          path_output_png: Path,
-         path_weights_json: ty.Optional[Path] = None,
-         path_out_json: ty.Optional[Path] = None):
+         path_weights_json: ty.Optional[Path] = None):
     assert path_config.exists(), f"Path not found: {path_config}"
     
     __config_obj = toml.load(path_config)
@@ -262,24 +264,31 @@ def main(path_config: Path,
         seq_road_lane_obj=seq_road_id_obj,
         path_output_png=path_output_png,
         config_obj=config_obj, 
-        road_weights=seq_road_weights,
-        path_out_json=path_out_json)
+        road_weights=seq_road_weights)
+
 
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
     
-    opt = ArgumentParser()
-    opt.add_argument('--path_config', type=str, required=True)
-    opt.add_argument('--path_out_png', type=str, required=True)
-    opt.add_argument('--path_out_json', type=str, required=False)
-    opt.add_argument('--path_json', type=str, required=False, default=None)    
-    # __path_config = Path("/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/configurations/test_visualization.toml")
+    opt = ArgumentParser(description='Visualizing the study map.')
+    opt.add_argument('--path_config', 
+                     type=str, 
+                     required=True, 
+                     help='A toml configuration file.')
+    opt.add_argument('--path_out_png', 
+                     type=str, 
+                     required=True,
+                     help='The output path to save the png file.')
+    opt.add_argument('--path_weight_jsonl', 
+                     type=str, 
+                     required=False, 
+                     default=None,
+                     help='Optional. The path to the jsonl file of the weights.')
     
     __args = opt.parse_args()
     
     main(
         path_config=Path(__args.path_config),
         path_output_png=Path(__args.path_out_png),
-        path_weights_json=__args.path_json,
-        path_out_json= __args.path_out_json)
+        path_weights_json=__args.path_weight_jsonl)

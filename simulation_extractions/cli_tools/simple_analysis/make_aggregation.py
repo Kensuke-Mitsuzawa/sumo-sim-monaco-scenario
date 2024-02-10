@@ -130,5 +130,11 @@ def main(path_config: Path):
     
 
 if __name__ == '__main__':
-    _path_config = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/cli_tools/simple_analysis/config_make_aggregation.toml')
-    main(_path_config)
+    from argparse import ArgumentParser
+    
+    __args = ArgumentParser()
+    __args.add_argument('--path_config', type=str, help='Path to toml config file')
+    __args = __args.parse_args()
+    
+    # _path_config = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/cli_tools/simple_analysis/config_make_aggregation.toml')
+    main(Path(__args.path_config))

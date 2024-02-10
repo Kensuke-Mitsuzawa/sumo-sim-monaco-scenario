@@ -1,4 +1,12 @@
-"""A CLI script writing out the detected weights to a GeoJSON file."""
+"""A CLI script writing out the detected weights to a GeoJSON file.
+
+This script is designed to export the detected weights values to either Kepler.gl or Google Earth.
+Yet, I strongly recommend choosing Kepler.gl as it is more flexible and can be used in Google Earth.
+
+When kepler.gl, then output format is CSV. The geo-info fields are coded with GeoJSON.
+When Google Earth, then output format is KML.
+"""
+
 
 from pathlib import Path
 import typing as ty
@@ -9,6 +17,9 @@ import dataclasses
 import jsonlines
 import math
 import pandas as pd
+
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 import xml.etree.ElementTree as ET
 
@@ -138,16 +149,22 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
                                      time_time_step: float,
                                      n_time_bucket: int,
                                      date_timestamp: ty.Optional[datetime.date] = None):
-    assert export_geofile_format in ['kepler.gl-csv', 'kepler.gl-geojson', 'google-earth'], f'Unknown export_geofile_format: {export_geofile_format}'
+    """
+    For kepler.gl, refer to the following link:
+    https://docs.kepler.gl/docs/user-guides/b-kepler-gl-workflow/a-add-data-to-the-map
+    """
+    assert export_geofile_format in ['kepler.gl-csv', 'google-earth'], f'Unknown export_geofile_format: {export_geofile_format}'
     
     logger.debug(f'loading weight file: {path_weight_jsonl}')
     with jsonlines.open(path_weight_jsonl.as_posix()) as reader:
         weight_file_content = [_r for _r in reader]
     # end with
     logger.info(f'N(weights) = {len(weight_file_content)}')
-    
-    # seq_ids_node = [t_score for t_score in weight_file_content if ':' in t_score['lane_id']]
-    # seq_ids_lanes = [t_score for t_score in weight_file_content if ':' not in t_score['lane_id']]
+
+    # Create a color map (used only for google-earth)
+    weight_cmap = plt.get_cmap('viridis')
+    __seq_weights = [_w_obj['weight'] for _w_obj in weight_file_content]
+    cmap_norm = plt.Normalize(min(__seq_weights), max(__seq_weights))
     
     kml = simplekml.Kml()
     seq_geojson_obj = []
@@ -202,16 +219,20 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
                 __prop = dict(
                     geojson=geojson.dumps(__point),
                     value=_value,
-                    # google_map_link=_gmap_url,
+                    google_map_link=_gmap_url,
                     description=_description,
                     time_bucket=_i_time_bucket,
                     timestamp=_date_timestamp_bucket_start)
                 seq_geojson_obj.append(__prop)
             elif export_geofile_format == 'google-earth':
-                raise NotImplementedError('Google Earth export is not implemented yet.')            
-                # kml.newpoint(name=_lane_id_orig, 
-                #             coords=[(_lon, _lat)],
-                #             description=f'{_description}\n{_date_timestamp_bucket_start}\n{_gmap_url}')
+                _point = kml.newpoint(name=_lane_id_orig, 
+                            coords=[(_lon, _lat)],
+                            description=f'{_description}\n{_date_timestamp_bucket_start}\n{_gmap_url}')
+                _point.timestamp.when = _date_timestamp_bucket_start
+                __color = weight_cmap(cmap_norm(_value))
+                __color_hex = mcolors.to_hex(__color)
+                _point.style.labelstyle.color = __color_hex  # Make the text red
+                _point.style.labelstyle.scale = _value  # Make the text twice as big
             else:
                 raise ValueError(f'Unknown export_geofile_format: {export_geofile_format}')
             # end if
@@ -232,31 +253,35 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
                 __prop = dict(
                     id=_lane_id_orig,
                     value=_value,
-                    # google_map_link=_gmap_url,
+                    google_map_link=_gmap_url,
                     description=_description,
                     time_bucket=_i_time_bucket,
                     timestamp=_date_timestamp_bucket_start)
                 __shape_info = geojson.Feature(geometry=__shape, properties=__prop)
                 seq_geojson_obj.append(__shape_info)
             elif export_geofile_format == 'kepler.gl-csv':
-                _t_position_lon_lat = [(v[1], v[0]) for v in _t_position]
-                # __shape = geojson.Polygon(_t_position_lon_lat)
-                __shape = geojson.Point((_t_position_lon_lat[0][0], _t_position_lon_lat[0][1]))
+                _t_position_lon_lat = [[(v[1], v[0]) for v in _t_position]]
+                __shape = geojson.MultiLineString(_t_position_lon_lat)
                 __prop = dict(
                     id=_lane_id_orig,
                     geojson=geojson.dumps(__shape),
                     value=_value,
-                    # google_map_link=_gmap_url,
+                    google_map_link=_gmap_url,
                     description=_description,
                     time_bucket=_i_time_bucket,
                     timestamp=_date_timestamp_bucket_start)
                 seq_geojson_obj.append(__prop)                
             elif export_geofile_format == 'google-earth':
-                raise NotImplementedError('Google Earth export is not implemented yet.')
-                # kml.newpolygon(
-                #     name=_lane_id_orig, 
-                #     description=f'{_description}\n{_date_timestamp_bucket_start}\n{_gmap_url}',
-                #     outerboundaryis=_t_position)        
+                _t_position_lon_lat = [[(v[1], v[0]) for v in _t_position]]
+                __poly = kml.newpolygon(
+                    name=_lane_id_orig, 
+                    description=f'{_description}',
+                    outerboundaryis=_t_position_lon_lat)
+                __poly.timestamp.when = _date_timestamp_bucket_start
+                __color = weight_cmap(cmap_norm(_value))
+                __color_hex = mcolors.to_hex(__color)
+                __poly.style.labelstyle.color = __color_hex  # Make the text red
+                __poly.style.labelstyle.scale = _value  # Make the text twice as big                
             else:
                 raise ValueError(f'Unknown export_geofile_format: {export_geofile_format}')
             # end if
@@ -314,16 +339,13 @@ def extract_simulation_time(path_sumo_sim_xml) -> ty.Tuple[int, int, float]:
     
     return int(_time_start), int(_time_end), time_step
             
-    
-
-
 
 def main(path_sumo_sim_xml: Path,
          path_sumo_net_xml: Path, 
          path_weight_jsonl: Path, 
          path_output_geo_file: Path,
-         export_geofile_format: str,
-         n_time_bucket: int,):
+         n_time_bucket: int,
+         export_geofile_format: str = 'kepler.gl-csv',):
     assert path_weight_jsonl.exists(), f"Path {path_weight_jsonl} does not exist."
     assert path_sumo_sim_xml.exists(), f"Path {path_sumo_sim_xml} does not exist."
     assert path_sumo_net_xml.exists(), f"Path {path_sumo_net_xml} does not exist."
@@ -353,20 +375,40 @@ def main(path_sumo_sim_xml: Path,
     )
 
 
+@dataclasses.dataclass
+class ConfigExportGIS:
+    path_sumo_sim_xml: str
+    path_sumo_net_xml: str
+    path_weight_jsonl: str
+    path_output_geo_file: str
+    n_time_bucket: int
+    export_geofile_format: str = 'kepler.gl-csv'
+
+
+
 if __name__ == "__main__":
     from argparse import ArgumentParser
+    import dacite
+    import toml
     
-    path_sumo_sim_xml = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/sumo_cfg.cfg')
-    path_sumo_net_xml = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/in/most.net.xml')
-    path_weight_jsonl = Path('/home/kensuke_mit/sumo-sim-outputs/aggregation.jsonl') 
-    path_output_geo_file = Path('/home/kensuke_mit/sumo-sim-outputs/aggregation.csv')
-    export_geofile_format = 'kepler.gl-csv'
-    n_time_bucket = 600
+    # path_sumo_sim_xml = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/sumo_cfg.cfg')
+    # path_sumo_net_xml = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/in/most.net.xml')
+    # path_weight_jsonl = Path('/home/kensuke_mit/sumo-sim-outputs/aggregation.jsonl') 
+    # path_output_geo_file = Path('/home/kensuke_mit/sumo-sim-outputs/aggregation.csv')
+    # export_geofile_format = 'kepler.gl-csv'
+    # n_time_bucket = 600
+    
+    __args = ArgumentParser()
+    __args.add_argument('--path_config', type=str, required=True)
+    __opt = __args.parse_args()
+    
+    __config_obj = toml.load(__opt.path_config)
+    config_obj = dacite.from_dict(data_class=ConfigExportGIS, data=__config_obj)
     
     main(
-        path_weight_jsonl=path_weight_jsonl,
-        path_sumo_sim_xml=path_sumo_sim_xml,
-        path_sumo_net_xml=path_sumo_net_xml,
-        path_output_geo_file=path_output_geo_file,
-        export_geofile_format=export_geofile_format,
-        n_time_bucket=n_time_bucket)
+        path_weight_jsonl=Path(config_obj.path_weight_jsonl),
+        path_sumo_sim_xml=Path(config_obj.path_sumo_sim_xml),
+        path_sumo_net_xml=Path(config_obj.path_sumo_net_xml),
+        path_output_geo_file=Path(config_obj.path_output_geo_file),
+        export_geofile_format=config_obj.export_geofile_format,
+        n_time_bucket=config_obj.n_time_bucket)
