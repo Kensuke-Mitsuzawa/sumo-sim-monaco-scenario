@@ -35,6 +35,7 @@ ipywidgets = "7.4.2"
 ipython-genutils = "^0.2.0"
 pyproj = "^3.6.1"
 geojson = "^3.1.0"
+jsonlines = "^4.0.0"
 
 [tool.poetry.scripts]
 
