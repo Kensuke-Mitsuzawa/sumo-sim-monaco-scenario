@@ -1,0 +1,30 @@
+Loading net-file from 'C:\Users\kensu\codes\MoSTScenario-master\MoSTScenario-master\scenario\in/most.net.xml' ... done (4128ms).
+Loading additional-files from 'C:\Users\kensu\codes\MoSTScenario-master\MoSTScenario-master\scenario\in/add/most.poly.xml' ... done (3190ms).
+Loading additional-files from 'C:\Users\kensu\codes\MoSTScenario-master\MoSTScenario-master\scenario\in/add/most.busstops.add.xml' ... done (48ms).
+Loading additional-files from 'C:\Users\kensu\codes\MoSTScenario-master\MoSTScenario-master\scenario\in/add/most.trainstops.add.xml' ... done (28ms).
+Loading additional-files from 'C:\Users\kensu\codes\MoSTScenario-master\MoSTScenario-master\scenario\in/add/most.parking.allvisible.add.xml' ... done (185ms).
+Loading additional-files from 'C:\Users\kensu\codes\MoSTScenario-master\MoSTScenario-master\scenario\in/add/basic.vType.xml' ... done (9ms).
+Warning: At actuated tlLogic '146640', actuated phase 2 has no controlling detector.
+Warning: At actuated tlLogic '148690', actuated phase 3 has no controlling detector.
+Loading done.
+Running start /B "" "C:\Program Files (x86)\Eclipse\Sumo\/bin/netedit" --registry-viewport --sumocfg-file "C:\Users\kensu\codes\MoSTScenario-master\MoSTScenario-master\scenario\most.sumocfg" --ignore.routeelements.
+Simulation ended at time: 14400.00
+Performance: 
+ Duration: 404.87s
+ Real time factor: 0
+ UPS: 0.000000
+Vehicles: 
+ Inserted: 0 (Loaded: 2)
+ Running: 0
+ Waiting: 0
+Persons: 
+ Inserted: 1
+ Running: 0
+Statistics (avg of 0):
+ RouteLength: 0.00
+ Speed: 0.00
+ Duration: 0.00
+ WaitingTime: 0.00
+ TimeLoss: 0.00
+ DepartDelay: 0.00
+
