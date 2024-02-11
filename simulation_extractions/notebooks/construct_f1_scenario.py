@@ -12,17 +12,18 @@ logger = logzero.logger
 
 
 # %%
+# script parameters
 PATH_SUMO_NET = "/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/f1_scenario/in/most.net.xml"
-assert Path(PATH_SUMO_NET).exists(), f"not found: {PATH_SUMO_NET}"
 
-
-# %%
 SOURCE_PATH_ROUTE_DIR = "/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/until_afternoon/original_config/in/route"
 SOURCE_PATH_ADD_DIR = "/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/until_afternoon/original_config/in/add"
 
 TARGET_PATH_ROUTE_DIR = "/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/f1_scenario/in/route"
 TARGET_PATH_ADD_DIR = "/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/f1_scenario/in/add"
+# If true, I delete all intermediate route. Ex. the 1st and last edge remain.
+IS_IGNORE_INTERMEDIATE_ROUTE = True
 
+assert Path(PATH_SUMO_NET).exists(), f"not found: {PATH_SUMO_NET}"
 
 # %%
 # copy files from the source to the target
@@ -136,9 +137,18 @@ for elem in iter_root_node:
     # redundant approach to remove the prohibited edges, but I do this style to keep the route ordering.
     __seq_edges_updated = [__edge for __edge in __seq_edges if __edge not in seq_prohibited_edges]
     # logger.debug(f"Bus-No: {__route_attrib['id']}, before-mod-N(edges): {len(__seq_edges)}, updated-N(edges): {len(__seq_edges_updated)}")
-    # updating edge information.
-    __route_attrib['edges'] = " ".join(__seq_edges_updated)
     
+    assert len(__seq_edges_updated) > 0, f"empty route: {elem.attrib['id']}"    
+    if IS_IGNORE_INTERMEDIATE_ROUTE:
+        # I keep the first and last edge.
+        __seq_edges_updated = [__seq_edges_updated[0], __seq_edges_updated[-1]]
+        # updating edge information.
+        __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    else:
+        # updating edge information.
+        __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    # end if
+
     # deleting the bus stop.
     __seq_stop_elem = elem.findall('stop')
     for _elem_stop in __seq_stop_elem:
@@ -237,7 +247,15 @@ for elem in iter_vehicle_node:
     __seq_edges_updated = [__edge for __edge in __seq_edges if __edge not in seq_prohibited_edges]
     # logger.debug(f"No: {_v_id}, before-mod-N(edges): {len(__seq_edges)}, updated-N(edges): {len(__seq_edges_updated)}")
     # updating edge information.
-    __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    assert len(__seq_edges_updated) > 0, f"empty route: {elem.attrib['id']}"
+    if IS_IGNORE_INTERMEDIATE_ROUTE:
+        # I keep the first and last edge.
+        __seq_edges_updated = [__seq_edges_updated[0], __seq_edges_updated[-1]]
+        # updating edge information.
+        __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    else:
+        __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    # end if
     
     # updating "stop" element if the parking lot is located on the prohibited edge.
     # <stop parkingArea="1151" until="45004" />
@@ -301,16 +319,24 @@ for elem in iter_person_node:
         # deleting the invalid edges from the route.
         _seq_edges = _elem_walk.attrib['edges'].split()
         _seq_edges_updated = [_edge for _edge in _seq_edges if _edge not in seq_prohibited_edges]
-        _elem_walk.attrib['edges'] = " ".join(_seq_edges_updated)
         if len(_seq_edges_updated) < len(_seq_edges):
             logger.debug(f"pedestrian: {elem.attrib['id']}, before-mod-N(edges): {len(_seq_edges)}, updated-N(edges): {len(_seq_edges_updated)}")
         # end if
-        
+
         # if the edge is empty, I delete the pedestrian.
         if len(_seq_edges_updated) == 0:
             is_delete_agent = True
             logger.debug(f"removed agent: {_id_pedestrian}")
             continue
+        # end if
+                
+        assert len(__seq_edges_updated) > 0, f"empty route: {elem.attrib['id']}"
+        if IS_IGNORE_INTERMEDIATE_ROUTE:
+            # I keep the first and last edge.
+            _seq_edges_updated = [_seq_edges_updated[0], _seq_edges_updated[-1]]
+            _elem_walk.attrib['edges'] = " ".join(_seq_edges_updated)
+        else:
+            _elem_walk.attrib['edges'] = " ".join(_seq_edges_updated)
         # end if
         
         # if deleted bus-stops is in the route, I delete the bus-stop.
@@ -365,7 +391,21 @@ for elem in iter_vehicle_node:
     __seq_edges_updated = [__edge for __edge in __seq_edges if __edge not in seq_prohibited_edges]
     # logger.debug(f"No: {_v_id}, before-mod-N(edges): {len(__seq_edges)}, updated-N(edges): {len(__seq_edges_updated)}")
     # updating edge information.
-    __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    
+    if len(__seq_edges_updated) == 0:
+        root.remove(elem)
+        continue
+    # end if
+    
+    assert len(__seq_edges_updated) > 0, f"empty route: {elem.attrib['id']}"
+    if IS_IGNORE_INTERMEDIATE_ROUTE:
+        # I keep the first and last edge.
+        __seq_edges_updated = [__seq_edges_updated[0], __seq_edges_updated[-1]]
+        # updating edge information.
+        __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    else:
+        __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    # end if
     elem_route.attrib = __route_attrib
     
     # updating stop info
@@ -409,8 +449,22 @@ for elem in iter_vehicle_node:
     # redundant approach to remove the prohibited edges, but I do this style to keep the route ordering.
     __seq_edges_updated = [__edge for __edge in __seq_edges if __edge not in seq_prohibited_edges]
     # logger.debug(f"No: {_v_id}, before-mod-N(edges): {len(__seq_edges)}, updated-N(edges): {len(__seq_edges_updated)}")
+    
+    if len(__seq_edges_updated) == 0:
+        root.remove(elem)
+        continue
+    # end if
+    
     # updating edge information.
-    __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    assert len(__seq_edges_updated) > 0, f"empty route: {elem.attrib['id']}"
+    if IS_IGNORE_INTERMEDIATE_ROUTE:
+        # I keep the first and last edge.
+        __seq_edges_updated = [__seq_edges_updated[0], __seq_edges_updated[-1]]
+        # updating edge information.
+        __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    else:
+        __route_attrib['edges'] = " ".join(__seq_edges_updated)
+    # end if
     elem_route.attrib = __route_attrib
 # end for
 
