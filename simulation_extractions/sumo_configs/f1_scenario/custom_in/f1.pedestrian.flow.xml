@@ -1,0 +1,31 @@
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">     
+    <!-- manual definition -->
+    <!-- from 4am til 8am. 1 person per 5 mins (300 steps). -->
+    <personFlow id="f1_audience_super_early_france" type="pedestrian" begin="14400" end="28800" period="300">
+        <walk edges="153478" busStop="131054" /> <!-- La Gare d'Eze -->
+        <ride busStop="131028" lines="M0:France" intended="train_M0:France" />
+        <!-- la destination a Monaco Monte-Carlo -->
+        <walk to="152831#0" />
+        <stop lane="152831#0_1" until="64800" actType="singing" />
+    </personFlow>
+    
+    <!-- from 8am til 10am. 1 person per 1 mins (60 steps). -->
+    <personFlow id="f1_audience_early_france" type="pedestrian" begin="28800" end="36000" period="60">
+        <walk edges="153478" busStop="131054" /> <!-- La Gare d'Eze -->
+        <ride busStop="131028" lines="M0:France" intended="train_M0:France" />
+        <!-- la destination a Monaco Monte-Carlo -->
+        <walk to="152831#0" />
+        <stop lane="152831#0_1" until="64800" actType="singing" />
+    </personFlow>
+
+    <!-- from 10 til 15h. 1 person per 0.5 mins (30 steps). -->
+    <personFlow id="f1_audience_peak_france" type="pedestrian" begin="28800" end="54000" period="30">
+        <walk edges="153478" busStop="131054" /> <!-- La Gare d'Eze -->
+        <ride busStop="131028" lines="M0:France" intended="train_M0:France" />
+        <!-- la destination a Monaco Monte-Carlo -->
+        <walk to="152831#0" />
+        <stop lane="152831#0_1" until="64800" actType="singing" />
+    </personFlow>
+    <!-- manual definition. end -->
+
+</routes>

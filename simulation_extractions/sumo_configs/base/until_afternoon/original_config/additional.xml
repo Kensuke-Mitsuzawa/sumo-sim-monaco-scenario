@@ -1,0 +1,4 @@
+<additional>
+    <edgeData id="edge-observation" file="edge-observation.xml" period="10" excludeEmpty="true" />
+    <laneData id="lane-observation" file="lane-observation.xml" period="10" excludeEmpty="true" />
+</additional>
