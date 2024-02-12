@@ -322,4 +322,4 @@ if __name__ == '__main__':
     __args.add_argument('--path_toml', required=True)
     __opt = __args.parse_args()
     
-    main(__opt.path_toml, is_run_test=True)
+    main(__opt.path_toml, is_run_test=False)
