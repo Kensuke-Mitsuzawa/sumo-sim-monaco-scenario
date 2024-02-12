@@ -1,0 +1,17 @@
+<additional>
+   <rerouter id="a8-01" edges="152276">
+      <interval begin="17000" end="50400">
+          <closingLaneReroute id="152276_0"/>
+          <closingLaneReroute id="152276_1"/>
+          <closingLaneReroute id="152276_2"/>
+      </interval>
+   </rerouter>
+
+   <rerouter id="a8-02" edges="152277">
+     <interval begin="17000" end="50400">
+          <closingLaneReroute id="152277_0"/>
+          <closingLaneReroute id="152277_1"/>
+          <closingLaneReroute id="152277_2"/>
+      </interval>
+   </rerouter>
+</additional>
