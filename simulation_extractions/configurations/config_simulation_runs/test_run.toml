@@ -1,13 +1,11 @@
 [resources]
     path_root = '/tmp/MoSTScenario-out'
 
-    path_dir_sumo_base_x = '/dev-home/simulation_extractions/sumo_configs/base/standard_config'
-    path_dir_sumo_base_y = '/dev-home/simulation_extractions/sumo_configs/base/less_capacity_config'
+    path_dir_sumo_base_x = '/dev-home/simulation_extractions/sumo_configs/base/until_afternoon/original_config'
+    path_dir_sumo_base_y = '/dev-home/simulation_extractions/sumo_configs/base/until_afternoon/slow_speed'
 
     name_sumo_cfg_x = 'sumo_cfg.cfg'
     name_sumo_cfg_y = 'sumo_cfg.cfg'
-
-    name_fcd_file = 'fcd.output.xml'
 
     dir_name_sumo_config = 'sumo_cfg'
     dir_name_postprocess = 'postprocess'
