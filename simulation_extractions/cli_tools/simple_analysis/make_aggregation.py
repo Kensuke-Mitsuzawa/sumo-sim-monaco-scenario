@@ -26,6 +26,9 @@ logger = logzero.logger
 class ConfigResource:
     path_simulation_output: str
     path_output_jsonl: str
+    
+    # key name in a npz file. It refers to a vector of ids, such as lane-id or edge-id.
+    key_name_lane_or_edge_id_vector: str 
 
     
 @dataclasses.dataclass
@@ -91,8 +94,12 @@ def main(path_config: Path):
     logger.debug('Loading simulation output array')
     assert Path(config_obj.Resource.path_simulation_output).exists(), f'File not found: {config_obj.Resource.path_simulation_output}'
     d_sim_out = np.load(config_obj.Resource.path_simulation_output)
+    
+    assert 'array' in d_sim_out, f'Key "array" not found in {config_obj.Resource.path_simulation_output}'
+    assert config_obj.Resource.key_name_lane_or_edge_id_vector in d_sim_out, f'Key "{config_obj.Resource.key_name_lane_or_edge_id_vector}" not found in {config_obj.Resource.path_simulation_output}'
+    
     array_sim_out = d_sim_out['array']
-    vector_lane_id = d_sim_out['lane_id']
+    vector_lane_id = d_sim_out[config_obj.Resource.key_name_lane_or_edge_id_vector]
     
     logger.debug('Aggregating simulation output array')
     array_sim_agg = aggregation_matrix(array_sim_out, config_obj.Aggregation.n_time_bucket)
@@ -133,7 +140,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     
     __args = ArgumentParser()
-    __args.add_argument('--path_config', type=str, help='Path to toml config file')
+    __args.add_argument('--path_config', type=str, help='Path to toml visualization config file', required=True)
     __args = __args.parse_args()
     
     # _path_config = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/cli_tools/simple_analysis/config_make_aggregation.toml')

@@ -1,6 +1,8 @@
-path_sumo_sim_xml '/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/sumo_cfg.cfg'
-path_sumo_net_xml = '/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/sumo_configs/base/slow_speed_scenario/in/most.net.xml'
-path_weight_jsonl = '/home/kensuke_mit/sumo-sim-outputs/aggregation.jsonl'
-path_output_geo_file = '/home/kensuke_mit/sumo-sim-outputs/aggregation.csv'
+path_sumo_sim_xml = '/dev-home/simulation_extractions/sumo_configs/base/until_afternoon/original_config/sumo_cfg.cfg'
+path_sumo_net_xml = '/dev-home/simulation_extractions/sumo_configs/base/until_afternoon/original_config/in/most.net.xml'
+path_weight_jsonl = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/simple-aggregation/0/y/edge_waiting_time.jsonl'
+path_output_geo_file = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/geo_files/y/edge_waiting_time.csv'
 export_geofile_format = 'kepler.gl-csv'
+lane_or_egde = 'edge'
 n_time_bucket = 600
+observation_every_step_per = 10

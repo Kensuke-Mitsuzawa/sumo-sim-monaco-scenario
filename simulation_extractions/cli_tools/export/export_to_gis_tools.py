@@ -75,7 +75,20 @@ def get_lane_id_dict(net: sumolib.net.Net) -> ty.Dict[str, Lane]:
     return seq_lane_id2lane
 
 
-def get_edge_polygon_shape_wgs84(dict_lane_id2lane: ty.Dict[str, Lane], 
+def get_edge_id_dict(net: sumolib.net.Net) -> ty.Dict[str, Edge]:
+    """Get the egde id to lane object dictionary from the net object.
+    """
+    seq_edge_obj = net.getEdges(withInternal=True)
+    seq_edge_id2lane = {}
+    for _edge_obj in seq_edge_obj:
+        _egde_id = _edge_obj.getID()
+        seq_edge_id2lane[_egde_id] = _edge_obj
+    # end for
+    logger.debug(f'Number of lanes: {len(seq_edge_id2lane)}')
+    return seq_edge_id2lane
+
+
+def get_edge_polygon_shape_wgs84(dict_road_id2lane: ty.Dict[str, ty.Union[Edge, Lane]], 
                                  lane_id: str,
                                  net: sumolib.net.Net
                                  ) -> ty.Optional[ty.List[ty.Tuple[float, float]]]:
@@ -86,11 +99,11 @@ def get_edge_polygon_shape_wgs84(dict_lane_id2lane: ty.Dict[str, Lane],
     ty.Optional[ty.List[ty.Tuple[float, float]]]
         The polygon shape of the edge in WGS84 coordinate system, (latitute, longitude)
     """
-    if lane_id not in dict_lane_id2lane:
+    if lane_id not in dict_road_id2lane:
         logger.error(f'lane_id {lane_id} not found in the net.')
         return None
     # end if
-    lane_obj = dict_lane_id2lane[lane_id]
+    lane_obj = dict_road_id2lane[lane_id]
     __polygon_shapes = lane_obj.getShape()
     if len(__polygon_shapes) == 0:
         logger.error(f'lane_id {lane_id} has no shape.')
@@ -143,11 +156,13 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
                                      path_output_geo_file: Path,
                                      dict_nodeID2node: ty.Dict[str, Node],
                                      dict_laneID2lane: ty.Dict[str, Lane],
+                                     dict_edgeID2edge: ty.Dict[str, Edge],
                                      net: sumolib.net.Net,
                                      export_geofile_format: str,
                                      simulation_start_time: int,
-                                     time_time_step: float,
+                                     observation_every_step_per: int,
                                      n_time_bucket: int,
+                                     lane_or_egde: str = 'lane',
                                      date_timestamp: ty.Optional[datetime.date] = None):
     """
     For kepler.gl, refer to the following link:
@@ -177,6 +192,7 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
     
     _type_object: str
     for weight_obj in weight_file_content:
+        # comment: the key name is 'lane_id', yet possibly "edge-id".
         _lane_id_orig = weight_obj['lane_id']
         if ':' in _lane_id_orig:
             _type_object = 'junction'
@@ -186,7 +202,7 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
         
         # define a timestamp. Use time-bucket
         _i_time_bucket: int = weight_obj['time_bucket']
-        _timestep_bucket_start = simulation_start_time + (_i_time_bucket * n_time_bucket * time_time_step)
+        _timestep_bucket_start = simulation_start_time + (_i_time_bucket * n_time_bucket * observation_every_step_per)
         _current_hour_min = __get_simulation_world_time(_timestep_bucket_start)
         _date_timestamp_bucket_start = f'{date_} {_current_hour_min}'
         
@@ -238,8 +254,14 @@ def __process_one_time_bucket_weight(path_weight_jsonl: Path,
             # end if
         elif _type_object == 'lane':
             __lane_id = _lane_id_orig
-            _t_position = get_edge_polygon_shape_wgs84(dict_laneID2lane, __lane_id, net=net)
-            
+            if lane_or_egde == 'edge':
+                _t_position = get_edge_polygon_shape_wgs84(dict_edgeID2edge, __lane_id, net=net)
+            elif lane_or_egde == 'lane':
+                _t_position = get_edge_polygon_shape_wgs84(dict_laneID2lane, __lane_id, net=net)
+            else:
+                raise ValueError(f'Unknown lane_or_egde: {lane_or_egde}')
+            # end if
+
             assert _t_position is not None and isinstance(_t_position, list), f'No position found for {_lane_id_orig}'
             _lat = _t_position[0][0]
             _lon = _t_position[0][1]
@@ -345,7 +367,9 @@ def main(path_sumo_sim_xml: Path,
          path_weight_jsonl: Path, 
          path_output_geo_file: Path,
          n_time_bucket: int,
-         export_geofile_format: str = 'kepler.gl-csv',):
+         observation_every_step_per: int,
+         lane_or_egde: str,
+         export_geofile_format: str = 'kepler.gl-csv'):
     assert path_weight_jsonl.exists(), f"Path {path_weight_jsonl} does not exist."
     assert path_sumo_sim_xml.exists(), f"Path {path_sumo_sim_xml} does not exist."
     assert path_sumo_net_xml.exists(), f"Path {path_sumo_net_xml} does not exist."
@@ -360,18 +384,20 @@ def main(path_sumo_sim_xml: Path,
 
     dict_nodeID2node = get_junction_object(net)
     dict_laneID2lane = get_lane_id_dict(net)
-        
+    dict_edgeID2edge = get_edge_id_dict(net)
+    
     __process_one_time_bucket_weight(
         path_weight_jsonl=path_weight_jsonl,
         path_output_geo_file=path_output_geo_file,
         dict_nodeID2node=dict_nodeID2node,
         dict_laneID2lane=dict_laneID2lane,
+        dict_edgeID2edge=dict_edgeID2edge,
+        lane_or_egde=lane_or_egde,
         net=net,
         export_geofile_format=export_geofile_format,
         n_time_bucket=n_time_bucket,
-        date_timestamp=datetime.date.fromtimestamp(sim_time_start),
         simulation_start_time=sim_time_start,
-        time_time_step=time_time_step
+        observation_every_step_per=observation_every_step_per
     )
 
 
@@ -382,8 +408,10 @@ class ConfigExportGIS:
     path_weight_jsonl: str
     path_output_geo_file: str
     n_time_bucket: int
+    observation_every_step_per: int
+    lane_or_egde: str
     export_geofile_format: str = 'kepler.gl-csv'
-
+    
 
 
 if __name__ == "__main__":
@@ -399,7 +427,7 @@ if __name__ == "__main__":
     # n_time_bucket = 600
     
     __args = ArgumentParser()
-    __args.add_argument('--path_config', type=str, required=True)
+    __args.add_argument('--path_config', help='Config file for GIS export.', type=str, required=True)
     __opt = __args.parse_args()
     
     __config_obj = toml.load(__opt.path_config)
@@ -411,4 +439,6 @@ if __name__ == "__main__":
         path_sumo_net_xml=Path(config_obj.path_sumo_net_xml),
         path_output_geo_file=Path(config_obj.path_output_geo_file),
         export_geofile_format=config_obj.export_geofile_format,
-        n_time_bucket=config_obj.n_time_bucket)
+        n_time_bucket=config_obj.n_time_bucket,
+        lane_or_egde=config_obj.lane_or_egde,
+        observation_every_step_per=config_obj.observation_every_step_per)
