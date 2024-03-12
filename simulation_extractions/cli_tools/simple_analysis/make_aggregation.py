@@ -17,6 +17,8 @@ import numpy as np
 
 import dataclasses
 
+import matplotlib.pyplot as plot
+
 import logzero
 logger = logzero.logger
 
@@ -25,6 +27,7 @@ logger = logzero.logger
 @dataclasses.dataclass
 class OutputConfig:
     path_output_resource: str
+    path_output_png: str
     dir_name_x: str = 'x'
     dir_name_y: str = 'y'
     
@@ -133,6 +136,67 @@ def __aggregate_time_bucket(config_obj: Config,
     return seq_agg_record
 
 
+def __plot_time_series_agg(config_obj: Config, 
+                           array_sim_x: np.ndarray, 
+                           vector_timestep: np.ndarray,
+                           array_sim_y: ty.Optional[np.ndarray],):
+    vector_label_timestamp = vector_timestep[:, 1]
+    # plot a time series graph.
+    _file_name: str = Path(config_obj.Resoruce.input_x.path_simulation_output).stem
+    Path(config_obj.Resoruce.output.path_output_png).mkdir(parents=True, exist_ok=True)
+    _f_file_png = Path(config_obj.Resoruce.output.path_output_png) / f'{_file_name}.png'
+    
+    
+    _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(10, 6))
+    # end if
+    
+    assert len(array_sim_x.shape) == 2, f'array_sim_x.shape={array_sim_x.shape}. Must be (n-sensors, n-timesteps)'
+    
+    # Calculate average and standard deviation
+    average_value_x = np.mean(array_sim_x, axis=0)
+    std_value_x = np.std(array_sim_x, axis=0)
+    # Create a simple plot
+    _ax.plot(average_value_x, label='Time Series', color='red', linestyle='--')
+    # _ax.axhline(y=std_value_x, color='red', linestyle='--', label='Average')
+    _min_std = average_value_x - std_value_x
+    min_std = np.where(_min_std < 0, 0, _min_std)
+    _ax.fill_between(range(len(average_value_x)), 
+                     min_std, 
+                     average_value_x + std_value_x, 
+                     color='red', 
+                     alpha=0.1, label='Std Deviation')
+
+    # y-side
+    if array_sim_y is not None:
+        assert len(array_sim_y.shape) == 2, f'array_sim_y.shape={array_sim_y.shape}. Must be (n-sensors, n-timesteps)'
+        average_value_y = np.mean(array_sim_y, axis=0)
+        std_value_y = np.std(array_sim_y, axis=0)
+        _ax.plot(average_value_y, label='Time Series', color='blue', linestyle='--')
+        # _ax.axhline(y=std_value_y, color='blue', linestyle='--', label='Average')
+        _min_std = average_value_y - std_value_y
+        min_std = np.where(_min_std < 0, 0, _min_std)        
+        _ax.fill_between(range(len(average_value_y)), 
+                         min_std, 
+                         average_value_y + std_value_y, 
+                         color='blue', 
+                         alpha=0.1, label='Std Deviation')
+    # end if
+    
+    input_file_name = Path(config_obj.Resoruce.input_x.path_simulation_output).stem
+    
+    _ax.set_xlabel('Time')
+    _ax.set_ylabel('Value')
+        
+    # Set the locations of the xticks
+    _ax.set_xticks(range(0, len(vector_label_timestamp), 100))
+    # Set the labels of the xticks
+    _ax.set_xticklabels(vector_label_timestamp[::100], rotation=45)
+    
+    _f.suptitle(f'Metric={input_file_name}. X: blue, Y: red.')
+    _f.savefig(_f_file_png, bbox_inches='tight')
+    logger.debug(f'Writing a time series graph into {_f_file_png}')
+
+
 def main(path_config: Path):
     assert path_config.exists(), f'Config file not found: {path_config}'
     
@@ -149,11 +213,11 @@ def main(path_config: Path):
     assert config_obj.Resoruce.input_x.key_name_lane_or_edge_id_vector in d_sim_out, \
         f'Key "{config_obj.Resoruce.input_x.key_name_lane_or_edge_id_vector}" not found in {config_obj.Resoruce.input_x.key_name_lane_or_edge_id_vector}'
     
-    array_sim_out = d_sim_out['array']
+    array_sim_out_x = d_sim_out['array']
     vector_lane_id = d_sim_out[config_obj.Resoruce.input_x.key_name_lane_or_edge_id_vector]
     
     logger.debug('Aggregating simulation output array')
-    array_sim_agg = aggregation_matrix(array_sim_out, config_obj.Aggregation.n_time_bucket)
+    array_sim_agg = aggregation_matrix(array_sim_out_x, config_obj.Aggregation.n_time_bucket)
     logger.debug('Aggregation done')
     # finding a set of index that meets the threshold criteria.
     n_time_bucket = array_sim_agg.shape[-1]
@@ -184,11 +248,11 @@ def main(path_config: Path):
         assert config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector in d_sim_out, \
             f'Key "{config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector}" not found in {config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector}'
         
-        array_sim_out = d_sim_out['array']
+        array_sim_out_y = d_sim_out['array']
         vector_lane_id = d_sim_out[config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector]
         
         logger.debug('Aggregating simulation output array')
-        array_sim_agg = aggregation_matrix(array_sim_out, config_obj.Aggregation.n_time_bucket)
+        array_sim_agg = aggregation_matrix(array_sim_out_y, config_obj.Aggregation.n_time_bucket)
         logger.debug('Aggregation done')
         # finding a set of index that meets the threshold criteria.
         n_time_bucket = array_sim_agg.shape[-1]
@@ -207,7 +271,19 @@ def main(path_config: Path):
         _stats_obj = dict(array_shape=array_sim_agg.shape)
         with open(_f_stats_file, 'w') as f:
             f.write(json.dumps(_stats_obj))
-        # end with        
+        # end with
+        
+        assert np.array_equal(array_sim_out_x, array_sim_out_y) is False, 'array_sim_out_x and array_sim_out_y are the same'
+    else:
+        array_sim_out_y = None
+    # end if
+
+    vector_timestamp_labels: np.ndarray = d_sim_out['timestamps']
+    
+    __plot_time_series_agg(config_obj=config_obj, 
+                           array_sim_x=array_sim_out_x, 
+                           vector_timestep=vector_timestamp_labels,
+                           array_sim_y=array_sim_out_y)
 
     
 if __name__ == '__main__':

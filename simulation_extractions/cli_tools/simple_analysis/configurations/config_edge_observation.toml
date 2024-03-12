@@ -1,9 +1,10 @@
 [Resoruce]
     [Resoruce.output]
         path_output_resource = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/simple-aggregation/0/'
+        path_output_png = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/simple-png/0/'
 
     [Resoruce.input_x]
-        path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/postprocess/0/y/edge_observation.npz'
+        path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/postprocess/0/x/edge_observation.npz'
         key_name_lane_or_edge_id_vector = 'edge_id'
     [Resoruce.input_y]
         path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/postprocess/0/y/edge_observation.npz'
