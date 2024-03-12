@@ -1,6 +1,9 @@
 [Resource]
-    path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/slow_speed_scenario_iter/postprocess/0/x/load_observation.npz'
-    path_output_jsonl = '/home/kensuke_mit/sumo-sim-outputs/aggregation.jsonl'
+    path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/postprocess/0/y/edge_waiting_time.npz'
+    path_output_jsonl = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/simple-aggregation/0/y/edge_waiting_time.jsonl'
+
+    key_name_lane_or_edge_id_vector = 'edge_id'
+
 
 [Aggregation]
     n_time_bucket = 600
