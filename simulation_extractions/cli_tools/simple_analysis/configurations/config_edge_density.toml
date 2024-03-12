@@ -1,0 +1,14 @@
+[Resoruce]
+    [Resoruce.output]
+        path_output_resource = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/simple-aggregation/0/'
+
+    [Resoruce.input_x]
+        path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/postprocess/0/y/edge_density.npz'
+        key_name_lane_or_edge_id_vector = 'edge_id'
+    [Resoruce.input_y]
+        path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/postprocess/0/y/edge_density.npz'
+        key_name_lane_or_edge_id_vector = 'edge_id'
+
+[Aggregation]
+    n_time_bucket = 300
+    threshold_aggregation_value = 1.0
