@@ -2,6 +2,7 @@
     [Resoruce.output]
         path_output_resource = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/simple-aggregation/0/'
         path_output_png = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/simple-png/0/'
+        path_output_heatmap = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/heatmap-png/0/'
 
     [Resoruce.input_x]
         path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/standard-and-sardine/postprocess/0/x/edge_density.npz'

@@ -18,6 +18,7 @@ import numpy as np
 import dataclasses
 
 import matplotlib.pyplot as plot
+import seaborn as sns
 
 import logzero
 logger = logzero.logger
@@ -28,6 +29,7 @@ logger = logzero.logger
 class OutputConfig:
     path_output_resource: str
     path_output_png: str
+    path_output_heatmap: str
     dir_name_x: str = 'x'
     dir_name_y: str = 'y'
     
@@ -136,10 +138,35 @@ def __aggregate_time_bucket(config_obj: Config,
     return seq_agg_record
 
 
+def __plot_heatmap(config_obj: Config,
+                   array_sim_x_agg: np.ndarray,
+                   array_sim_y_agg: np.ndarray,
+                   vector_timestep: np.ndarray,):
+    assert array_sim_x_agg.shape == array_sim_y_agg.shape, f'array_sim_x_agg.shape={array_sim_x_agg.shape}, array_sim_y_agg.shape={array_sim_y_agg.shape}'
+
+    vector_label_timestamp = vector_timestep[:, 1]
+    # plot a time series graph.
+    _file_name: str = Path(config_obj.Resoruce.input_x.path_simulation_output).stem
+    Path(config_obj.Resoruce.output.path_output_heatmap).mkdir(parents=True, exist_ok=True)
+    _f_file_png = Path(config_obj.Resoruce.output.path_output_heatmap) / f'{_file_name}.png'
+
+
+    _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(10, 6))
+    _f.suptitle(f'Metric={_file_name}.')
+    sns.heatmap(np.abs(array_sim_x_agg - array_sim_y_agg), ax=_ax, cmap='binary')
+    
+    _f.savefig(_f_file_png, bbox_inches='tight')
+    logger.debug(f'Writing a heatmap graph into {_f_file_png}')
+    
+
+
 def __plot_time_series_agg(config_obj: Config, 
                            array_sim_x: np.ndarray, 
                            vector_timestep: np.ndarray,
                            array_sim_y: ty.Optional[np.ndarray],):
+    """This function plots a time series graph.
+    X-axis: time-stamp, Y-axis: aggregated values.
+    """
     vector_label_timestamp = vector_timestep[:, 1]
     # plot a time series graph.
     _file_name: str = Path(config_obj.Resoruce.input_x.path_simulation_output).stem
@@ -217,14 +244,14 @@ def main(path_config: Path):
     vector_lane_id = d_sim_out[config_obj.Resoruce.input_x.key_name_lane_or_edge_id_vector]
     
     logger.debug('Aggregating simulation output array')
-    array_sim_agg = aggregation_matrix(array_sim_out_x, config_obj.Aggregation.n_time_bucket)
+    array_sim_agg_x = aggregation_matrix(array_sim_out_x, config_obj.Aggregation.n_time_bucket)
     logger.debug('Aggregation done')
     # finding a set of index that meets the threshold criteria.
-    n_time_bucket = array_sim_agg.shape[-1]
+    n_time_bucket = array_sim_agg_x.shape[-1]
     # aggregation for x-side
     agg_record_x = __aggregate_time_bucket(config_obj=config_obj, 
                             n_time_bucket=n_time_bucket, 
-                            array_sim_agg=array_sim_agg, 
+                            array_sim_agg=array_sim_agg_x, 
                             vector_lane_id=vector_lane_id)
     _file_name: str = Path(config_obj.Resoruce.input_x.path_simulation_output).stem
     _f_file_jsonl = Path(config_obj.Resoruce.output.path_output_resource) / config_obj.Resoruce.output.dir_name_x / f'{_file_name}.jsonl'
@@ -233,7 +260,7 @@ def main(path_config: Path):
         seq_agg_record=agg_record_x)
     ## writing simple stats into a text file.
     _f_stats_file = Path(config_obj.Resoruce.output.path_output_resource) / config_obj.Resoruce.output.dir_name_x / f'{_file_name}.txt'
-    _stats_obj = dict(array_shape=array_sim_agg.shape)
+    _stats_obj = dict(array_shape=array_sim_agg_x.shape)
     with open(_f_stats_file, 'w') as f:
         f.write(json.dumps(_stats_obj))
     # end with
@@ -252,14 +279,14 @@ def main(path_config: Path):
         vector_lane_id = d_sim_out[config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector]
         
         logger.debug('Aggregating simulation output array')
-        array_sim_agg = aggregation_matrix(array_sim_out_y, config_obj.Aggregation.n_time_bucket)
+        array_sim_agg_y = aggregation_matrix(array_sim_out_y, config_obj.Aggregation.n_time_bucket)
         logger.debug('Aggregation done')
         # finding a set of index that meets the threshold criteria.
-        n_time_bucket = array_sim_agg.shape[-1]
+        n_time_bucket = array_sim_agg_y.shape[-1]
         # aggregation for y-side
         agg_record_y = __aggregate_time_bucket(config_obj=config_obj, 
                                 n_time_bucket=n_time_bucket, 
-                                array_sim_agg=array_sim_agg, 
+                                array_sim_agg=array_sim_agg_y, 
                                 vector_lane_id=vector_lane_id)
         _file_name: str = Path(config_obj.Resoruce.input_y.path_simulation_output).stem
         _f_file_jsonl = Path(config_obj.Resoruce.output.path_output_resource) / config_obj.Resoruce.output.dir_name_y / f'{_file_name}.jsonl'
@@ -268,7 +295,7 @@ def main(path_config: Path):
             seq_agg_record=agg_record_y)
         ## writing simple stats into a text file.
         _f_stats_file = Path(config_obj.Resoruce.output.path_output_resource) / config_obj.Resoruce.output.dir_name_y / f'{_file_name}.txt'
-        _stats_obj = dict(array_shape=array_sim_agg.shape)
+        _stats_obj = dict(array_shape=array_sim_agg_y.shape)
         with open(_f_stats_file, 'w') as f:
             f.write(json.dumps(_stats_obj))
         # end with
@@ -284,6 +311,13 @@ def main(path_config: Path):
                            array_sim_x=array_sim_out_x, 
                            vector_timestep=vector_timestamp_labels,
                            array_sim_y=array_sim_out_y)
+    # heatmap
+    __plot_heatmap(
+        config_obj=config_obj,
+        array_sim_x_agg=array_sim_agg_x,
+        array_sim_y_agg=array_sim_agg_y,
+        vector_timestep=vector_timestamp_labels
+    )
 
     
 if __name__ == '__main__':
