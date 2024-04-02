@@ -1,0 +1,5 @@
+PATH_DIR_SCENARIO_SOURCE="/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/original_config"
+
+NAME_SUMO_CFG="sumo_cfg.cfg"
+
+SCENARIO_NAME="heavy_blocking_scenario"

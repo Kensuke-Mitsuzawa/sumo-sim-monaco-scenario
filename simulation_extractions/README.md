@@ -13,14 +13,37 @@ The Monaco scenario does not have enough detectors.
 
 `poetry install`
 
+# What can do?
+
+1. Executing SUMO simulations.
+2. Making an aggregated file.
+3. Making visualizations.
+
 
 # How to use?
 
-A toml file is necessary.
+## Executing simulations
 
+A toml file is necessary. 
 `task_pipeline.py` is an interface.
 
-# Map Visualization
+## Aggregation & Visualization
+
+The procedure is
+
+1. running `./cli_tools/simple_analysis/make_aggregation.py` and obtain jsonl format file.
+2. running a visualization script. `./cli_tools/export/*.py`. See the directory for more info.
+
+The first step generates a jsonl format file. An example line is,
+
+```
+{"lane_id": "-152191_0", "weight": 1.8016666666666667, "time_bucket": 8, "label": "Average during 4800 until 5400"}
+```
+.
+
+See the gallery section below.
+
+# Gallery: Map Visualization
 
 ## Static PNG visualization
 
@@ -52,11 +75,5 @@ You have to specify a path to jsonline file. The jsonline file holds weight valu
 {"lane_id": "-152191_0", "weight": 1.8016666666666667, "time_bucket": 8, "label": "Average during 4800 until 5400"}
 ```
 
-
-## Simple Analysis Script
-
-An easy analysis script is ready to use: `cli_tools/simple_analysis/make_aggregation.py`.
-
-This script generates the weight jsonline file.
 
 
