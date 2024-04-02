@@ -1,7 +1,10 @@
 """A script to make aggregation of simulation output array.
 
 Input: You write all configurations in a toml file.
-Output: JSONL file that contains a list of aggregated records.
+Output: This script writes out a lot of files. Here is the list of output files,
+1. JSONL file that contains a list of aggregated records.
+2. PNG file of a heatmap of which time-axis is aggregated.
+3. PNG file of a summary statistics.
 """
 
 import typing as ty
