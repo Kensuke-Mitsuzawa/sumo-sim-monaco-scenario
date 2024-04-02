@@ -374,6 +374,8 @@ def main(path_sumo_sim_xml: Path,
     assert path_sumo_sim_xml.exists(), f"Path {path_sumo_sim_xml} does not exist."
     assert path_sumo_net_xml.exists(), f"Path {path_sumo_net_xml} does not exist."
     
+    path_output_geo_file.parent.mkdir(parents=True, exist_ok=True)
+    
     # get simulation time info    
     sim_time_start, __, time_time_step = extract_simulation_time(path_sumo_sim_xml=path_sumo_sim_xml)
     
