@@ -227,13 +227,9 @@ def __plot_time_series_agg(config_obj: Config,
     logger.debug(f'Writing a time series graph into {_f_file_png}')
 
 
-def main(path_config: Path):
-    assert path_config.exists(), f'Config file not found: {path_config}'
-    
-    _config_obj = toml.load(path_config)
-    config_obj = dacite.from_dict(data_class=Config, data=_config_obj)
-    
-    # ------------------------------------------------
+def __procedure_x(config_obj: Config) -> ty.Tuple[np.ndarray, np.ndarray]:
+    """Do procedures for array-x.
+    """
     # I load array-x.
     logger.debug('Loading simulation output array (x)')
     assert Path(config_obj.Resoruce.input_x.path_simulation_output).exists(), f'File not found: {config_obj.Resoruce.input_x.path_simulation_output}'
@@ -267,60 +263,144 @@ def main(path_config: Path):
     with open(_f_stats_file, 'w') as f:
         f.write(json.dumps(_stats_obj))
     # end with
+
+    return array_sim_out_x, array_sim_agg_x
+
+
+def __procedure_y(config_obj: Config, array_sim_out_x: np.ndarray) -> ty.Tuple[np.ndarray, np.ndarray]:
+    """Do procedures for array-y if specified.
+    """
+    assert config_obj.Resoruce.input_y is not None, 'config_obj.Resoruce.input_y is None'
+    logger.debug('Loading simulation output array (y)')
+    assert Path(config_obj.Resoruce.input_y.path_simulation_output).exists(), f'File not found: {config_obj.Resoruce.input_y.path_simulation_output}'
+    d_sim_out = np.load(config_obj.Resoruce.input_y.path_simulation_output)
+    
+    assert 'array' in d_sim_out, f'Key "array" not found in {config_obj.Resoruce.input_y.path_simulation_output}'
+    assert config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector in d_sim_out, \
+        f'Key "{config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector}" not found in {config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector}'
+    
+    array_sim_out_y = d_sim_out['array']
+    vector_lane_id = d_sim_out[config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector]
+    
+    logger.debug('Aggregating simulation output array')
+    array_sim_agg_y = aggregation_matrix(array_sim_out_y, config_obj.Aggregation.n_time_bucket)
+    logger.debug('Aggregation done')
+    # finding a set of index that meets the threshold criteria.
+    n_time_bucket = array_sim_agg_y.shape[-1]
+    # aggregation for y-side
+    agg_record_y = __aggregate_time_bucket(config_obj=config_obj, 
+                            n_time_bucket=n_time_bucket, 
+                            array_sim_agg=array_sim_agg_y, 
+                            vector_lane_id=vector_lane_id)
+    _file_name: str = Path(config_obj.Resoruce.input_y.path_simulation_output).stem
+    _f_file_jsonl = Path(config_obj.Resoruce.output.path_output_resource) / config_obj.Resoruce.output.dir_name_y / f'{_file_name}.jsonl'
+    __write_out_jsonl(
+        path_output_jsonl=_f_file_jsonl,
+        seq_agg_record=agg_record_y)
+    ## writing simple stats into a text file.
+    _f_stats_file = Path(config_obj.Resoruce.output.path_output_resource) / config_obj.Resoruce.output.dir_name_y / f'{_file_name}.txt'
+    _stats_obj = dict(array_shape=array_sim_agg_y.shape)
+    with open(_f_stats_file, 'w') as f:
+        f.write(json.dumps(_stats_obj))
+    # end with
+    
+    assert np.array_equal(array_sim_out_x, array_sim_out_y) is False, 'array_sim_out_x and array_sim_out_y are the same'
+    
+    return array_sim_out_y, array_sim_agg_y
+
+
+def __get_vectors_label(config_obj: Config) -> ty.Tuple[np.ndarray, np.ndarray]:
+    """
+    Args:
+        config_obj: Config object.
+    Returns:
+        vector_lane_id: np.ndarray. The array is a sequence of lane-name (or lane-id).
+        vector_timestamp_labels: np.ndarray. The array is a sequence of timestamp.
+    """
+    assert config_obj.Resoruce.input_y is not None, 'config_obj.Resoruce.input_y is None'
+    logger.debug('Loading simulation output array (y)')
+    assert Path(config_obj.Resoruce.input_y.path_simulation_output).exists(), f'File not found: {config_obj.Resoruce.input_y.path_simulation_output}'
+    d_sim_out = np.load(config_obj.Resoruce.input_y.path_simulation_output)
+    
+    vector_timestamp_labels: np.ndarray = d_sim_out['timestamps']
+    vector_lane_id: np.ndarray = d_sim_out[config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector]   
+
+    return vector_lane_id, vector_timestamp_labels
+
+
+def __compute_l1_distance(config_obj: Config, array_sim_x: np.ndarray, array_sim_y: np.ndarray, vector_lane_id: np.ndarray):
+    """A function writing out L1 distance of X - Y into JSONL file.
+    """
+    assert array_sim_x.shape == array_sim_y.shape, f'array_sim_x.shape={array_sim_x.shape}, array_sim_y.shape={array_sim_y.shape}'
+    # computing L1 distance of X - Y.
+    logger.debug(f'Computing L1 distance of X - Y')
+    # Taking L1
+    diff_l1 = np.abs(array_sim_x - array_sim_y)
+    
+    # making aggregation
+    logger.debug('Aggregating simulation output array')
+    array_agg_l1 = aggregation_matrix(diff_l1, config_obj.Aggregation.n_time_bucket)
+    logger.debug('Aggregation done')
+    
+    # generating objects having label information.
+    logger.debug(f'Generating Aggregation objects...')
+    n_time_bucket: int = array_agg_l1.shape[-1]
+    agg_record_l1_diff = __aggregate_time_bucket(config_obj=config_obj, 
+                            n_time_bucket=n_time_bucket,
+                            array_sim_agg=array_agg_l1, 
+                            vector_lane_id=vector_lane_id)
+    
+    # saving the aggregation objects into a JSONL file.
+    assert config_obj.Resoruce.input_y is not None, 'config_obj.Resoruce.input_y.path_simulation_output is None'
+    _file_name: str = f'{Path(config_obj.Resoruce.input_y.path_simulation_output).stem}_l1_diff.jsonl'
+    _f_file_jsonl = Path(config_obj.Resoruce.output.path_output_resource) / _file_name
+    __write_out_jsonl(
+        path_output_jsonl=_f_file_jsonl,
+        seq_agg_record=agg_record_l1_diff)
+    
+
+
+
+def main(path_config: Path):
+    assert path_config.exists(), f'Config file not found: {path_config}'
+    
+    _config_obj = toml.load(path_config)
+    config_obj = dacite.from_dict(data_class=Config, data=_config_obj)
+    
+    # ------------------------------------------------
+    # # I load array-x.
+    array_sim_out_x, array_sim_agg_x = __procedure_x(config_obj=config_obj)
+
     # ------------------------------------------------
     if config_obj.Resoruce.input_y is not None:
-        assert config_obj.Resoruce.input_y is not None, 'config_obj.Resoruce.input_y is None'
-        logger.debug('Loading simulation output array (y)')
-        assert Path(config_obj.Resoruce.input_y.path_simulation_output).exists(), f'File not found: {config_obj.Resoruce.input_y.path_simulation_output}'
-        d_sim_out = np.load(config_obj.Resoruce.input_y.path_simulation_output)
-        
-        assert 'array' in d_sim_out, f'Key "array" not found in {config_obj.Resoruce.input_y.path_simulation_output}'
-        assert config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector in d_sim_out, \
-            f'Key "{config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector}" not found in {config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector}'
-        
-        array_sim_out_y = d_sim_out['array']
-        vector_lane_id = d_sim_out[config_obj.Resoruce.input_y.key_name_lane_or_edge_id_vector]
-        
-        logger.debug('Aggregating simulation output array')
-        array_sim_agg_y = aggregation_matrix(array_sim_out_y, config_obj.Aggregation.n_time_bucket)
-        logger.debug('Aggregation done')
-        # finding a set of index that meets the threshold criteria.
-        n_time_bucket = array_sim_agg_y.shape[-1]
-        # aggregation for y-side
-        agg_record_y = __aggregate_time_bucket(config_obj=config_obj, 
-                                n_time_bucket=n_time_bucket, 
-                                array_sim_agg=array_sim_agg_y, 
-                                vector_lane_id=vector_lane_id)
-        _file_name: str = Path(config_obj.Resoruce.input_y.path_simulation_output).stem
-        _f_file_jsonl = Path(config_obj.Resoruce.output.path_output_resource) / config_obj.Resoruce.output.dir_name_y / f'{_file_name}.jsonl'
-        __write_out_jsonl(
-            path_output_jsonl=_f_file_jsonl,
-            seq_agg_record=agg_record_y)
-        ## writing simple stats into a text file.
-        _f_stats_file = Path(config_obj.Resoruce.output.path_output_resource) / config_obj.Resoruce.output.dir_name_y / f'{_file_name}.txt'
-        _stats_obj = dict(array_shape=array_sim_agg_y.shape)
-        with open(_f_stats_file, 'w') as f:
-            f.write(json.dumps(_stats_obj))
-        # end with
-        
-        assert np.array_equal(array_sim_out_x, array_sim_out_y) is False, 'array_sim_out_x and array_sim_out_y are the same'
+        array_sim_out_y, array_sim_agg_y = __procedure_y(config_obj=config_obj, array_sim_out_x=array_sim_out_x)
     else:
-        array_sim_out_y = None
+        array_sim_out_y, array_sim_agg_y = None, None
     # end if
 
-    vector_timestamp_labels: np.ndarray = d_sim_out['timestamps']
+    # vector_timestamp_labels: np.ndarray = d_sim_out['timestamps']
+    vector_lane_id, vector_timestamp_labels = __get_vectors_label(config_obj)
     
     __plot_time_series_agg(config_obj=config_obj, 
                            array_sim_x=array_sim_out_x, 
                            vector_timestep=vector_timestamp_labels,
                            array_sim_y=array_sim_out_y)
-    # heatmap
-    __plot_heatmap(
-        config_obj=config_obj,
-        array_sim_x_agg=array_sim_agg_x,
-        array_sim_y_agg=array_sim_agg_y,
-        vector_timestep=vector_timestamp_labels
-    )
+    
+    if array_sim_out_y is not None and array_sim_agg_y is not None:
+        # computing L1 distance of X - Y.
+        __compute_l1_distance(config_obj=config_obj,
+                              array_sim_x=array_sim_out_x, 
+                              array_sim_y=array_sim_out_y,
+                              vector_lane_id=vector_lane_id)
+        # heatmap
+        __plot_heatmap(
+            config_obj=config_obj,
+            array_sim_x_agg=array_sim_agg_x,
+            array_sim_y_agg=array_sim_agg_y,
+            vector_timestep=vector_timestamp_labels)
+    # end if
+    
+    logger.info('---------------------- END SCRIPT ----------------------')
 
     
 if __name__ == '__main__':

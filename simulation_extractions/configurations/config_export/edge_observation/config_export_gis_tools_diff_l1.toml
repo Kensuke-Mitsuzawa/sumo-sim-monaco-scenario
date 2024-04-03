@@ -1,0 +1,12 @@
+path_sumo_sim_xml = '/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/original_config/sumo_cfg.cfg'
+path_sumo_net_xml = '/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/original_config/in/most.net.xml'
+path_weight_jsonl = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/simple-aggregation/0/edge_observation_l1_diff.jsonl'
+
+# Output
+path_output_geo_file = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/geo_files/l1_diff/edge_observation.csv'
+
+# Configurations
+export_geofile_format = 'kepler.gl-csv'
+lane_or_egde = 'edge'
+n_time_bucket = 500
+observation_every_step_per = 10
