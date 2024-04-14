@@ -8,11 +8,15 @@ import numpy as np
 import xarray as xr
 
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 from shapely.geometry import Polygon, LineString
 
 import imageio.v3 as iio
 
-from simulation_extractions import get_road_geo_coordinate
+from simulation_extractions import get_road_coordinate_simulation
+
+from distributed import Client, LocalCluster
 
 import logzero
 logger = logzero.logger
@@ -28,8 +32,8 @@ class ArraySet(ty.NamedTuple):
     label_time: np.ndarray
 
 
-def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_geo_coordinate.RoadLaneObject],
-                   lane_id2weights: ty.Dict[str, float],
+def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_coordinate_simulation.RoadLaneObject],
+                   edge_id2obs: ty.Dict[str, float],
                    path_output_png: Path):
     """Plotting the network.
     
@@ -47,6 +51,19 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_geo_coordinate.RoadLaneOb
     f, ax = plt.subplots(figsize=(10, 10))
      
     seq_lane_ids_with_coordinate = []
+    
+    processed_edge_ids = []
+    
+    # making a color code normalizer
+    if len(edge_id2obs) == 0:
+        mappable = None
+    else:        
+        seq_values = list(edge_id2obs.values())
+        norm = mcolors.Normalize(vmin=np.min(seq_values), vmax=np.max(seq_values))
+        cmap = plt.get_cmap('viridis')
+        mappable = cm.ScalarMappable(norm=norm, cmap=cmap)
+    # end if
+    
     for __lane_obj in seq_road_lane_obj:
         # Create a Shapely polygon object
         if len(__lane_obj.polygon_coords) == 2:
@@ -58,16 +75,29 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_geo_coordinate.RoadLaneOb
             x, y = polygon.exterior.xy
         # end if
                 
+        # lane-id -> edge-id
+        _edge_id = __lane_obj.lane_id.split('_')[0]
+        if ":" in _edge_id:
+            # if the intersection lane obj, skip.
+            continue
+        elif _edge_id in processed_edge_ids:
+            continue
+        else:
+            processed_edge_ids.append(_edge_id)
+        # end if
+    
         # process for the selected variables.
         # TODO: changing color by the weight.
-        if __lane_obj.lane_id in lane_id2weights:
-            __color = 'red'
-            __linewidth = lane_id2weights[__lane_obj.lane_id] + 5.0
-            logger.info(f"Use weights value -> lane_id: {__lane_obj.lane_id}, weight: {lane_id2weights[__lane_obj.lane_id]}")
+        
+        if _edge_id in edge_id2obs:
+            assert mappable is not None, f"mappable is None, but edge_id2obs is not empty."
+            __color = mappable.to_rgba(edge_id2obs.get(_edge_id, 0.0))
+            # __color = 'red'
+            __linewidth = 0.5
             # putting lane-id, weights, and coordinates of the road.
             seq_lane_ids_with_coordinate.append(dict(
-                lane_id=__lane_obj.lane_id,
-                weights=lane_id2weights.get(__lane_obj.lane_id, 0.0),
+                lane_id=_edge_id,
+                weights=edge_id2obs.get(_edge_id, 0.0),
                 coordinate_tuples=list(zip(x, y))
             ))
         else:
@@ -83,16 +113,18 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_geo_coordinate.RoadLaneOb
         # Plot the polygon
         if __lane_obj.is_autoroute:
             # l'autoroute A8 avec
-            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='solid', marker='*', linewidth=__linewidth)
+            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='solid', linewidth=__linewidth)
         if set(__lane_obj.allow) == set(['pedestrian', 'bicycle']) or set(__lane_obj.allow) == set(['pedestrian']):
             # pietons et velos -> dotted line style
-            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle=':', linewidth=__linewidth)
+            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='solid', linewidth=__linewidth)
         elif len(__lane_obj.allow) == 0:
             # les roues generiques -> solid line style
             ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='solid', linewidth=__linewidth)
         elif 'rail' in __lane_obj.allow:
             # la rue de rail -> dash line style
-            ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='dashdot', marker='>', linewidth=__linewidth)
+            # ax.plot(_x_sorted, _y_sorted, color=__color, linestyle='dashdot', marker='>', linewidth=__linewidth)
+            logger.debug('I skip the train lane.')
+            pass
         else:
             print(__lane_obj.allow)
     # end for
@@ -101,7 +133,7 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_geo_coordinate.RoadLaneOb
 
 
 def generate_snapshot(input_array_dataset: ArraySet, 
-                      seq_road_geo_container: ty.List[get_road_geo_coordinate.RoadLaneObject],
+                      seq_road_geo_container: ty.List[get_road_coordinate_simulation.RoadLaneObject],
                       path_dir_snapshot: Path,
                       timestep_per_snapshot: int = 100):
     assert timestep_per_snapshot > 0, f"timestep_per_snapshot: {timestep_per_snapshot} must be greater than 0"
@@ -112,11 +144,16 @@ def generate_snapshot(input_array_dataset: ArraySet,
         array_t = input_array_dataset.observation_array[:, _t]
         logger.debug(f"array_t: {_t} - {_t + timestep_per_snapshot}")
         
-        # lane_id2weights
-        lane_id2weights = dict(zip(input_array_dataset.label_road, array_t))
+        # lane_id2observation_value
+        edge_id2obs = {}
+        for __edge_id, __obs in zip(input_array_dataset.label_road, array_t):
+            if __obs > 0:
+                edge_id2obs[__edge_id] = __obs.item()
+            # end if
+        # end for
 
         path_snapshot = path_dir_snapshot / f"snapshot_{_t:04d}.png"        
-        __plot_netowrk(seq_road_geo_container, lane_id2weights, path_snapshot)
+        __plot_netowrk(seq_road_geo_container, edge_id2obs, path_snapshot)
         logger.debug(f"Saved: {path_snapshot}")
         
     
@@ -178,7 +215,7 @@ def main(path_tomo_config: Path,
     
     # loading geo coordinate of the roads
     logger.debug(f"loading net info from path_sumo_xml: {path_sumo_xml}")
-    seq_road_container = get_road_geo_coordinate.main(path_sumo_xml)
+    seq_road_container = get_road_coordinate_simulation.main(path_sumo_xml)
     logger.debug(f"Done")
     
     array_x = _load_simulation_output(path_input_x, 'array', key_name_array)

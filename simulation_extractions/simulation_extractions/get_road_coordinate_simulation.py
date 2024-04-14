@@ -40,7 +40,8 @@ def __parse_polygon_coords(shape_xml_attribute: str) -> ty.List[ty.Tuple[float, 
     
 
 def __parse_road_network(path_sumo_net_xml: Path, 
-                         prefix_auto_route: str = 'highway.motorway') -> ty.List[RoadLaneObject]:
+                         prefix_auto_route: str = 'highway.motorway'
+                         ) -> ty.List[RoadLaneObject]:
     """Extracting the lane information from the given SUMO net xml file.
     """
     seq_road_id_obj = []
