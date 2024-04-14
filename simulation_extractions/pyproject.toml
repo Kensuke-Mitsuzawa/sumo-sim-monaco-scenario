@@ -40,6 +40,8 @@ sumolib = "^1.19.0"
 simplekml = "^1.3.6"
 keplergl = "^0.3.2"
 pandera = "^0.18.3"
+xarray = "^2024.3.0"
+imageio = "^2.34.0"
 
 [tool.poetry.scripts]
 
