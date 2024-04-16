@@ -34,7 +34,9 @@ class ArraySet(ty.NamedTuple):
 
 def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_coordinate_simulation.RoadLaneObject],
                    edge_id2obs: ty.Dict[str, float],
-                   path_output_png: Path):
+                   path_output_png: Path,
+                   time_step_at: int,
+                   max_value_color_normalisation: float = 1.0):
     """Plotting the network.
     
     Parameters
@@ -57,10 +59,10 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_coordinate_simulation.Roa
     # making a color code normalizer
     if len(edge_id2obs) == 0:
         mappable = None
-    else:        
+    else:
         seq_values = list(edge_id2obs.values())
-        norm = mcolors.Normalize(vmin=np.min(seq_values), vmax=np.max(seq_values))
-        cmap = plt.get_cmap('viridis')
+        norm = mcolors.Normalize(vmin=0, vmax=max_value_color_normalisation)
+        cmap = plt.get_cmap('hsv')
         mappable = cm.ScalarMappable(norm=norm, cmap=cmap)
     # end if
     
@@ -128,7 +130,9 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_coordinate_simulation.Roa
         else:
             print(__lane_obj.allow)
     # end for
-        
+    
+    ax.set_title('Road Network at time: {}'.format(time_step_at))
+
     f.savefig(path_output_png.as_posix())
 
 
@@ -157,7 +161,11 @@ def generate_snapshot(input_array_dataset: ArraySet,
         # end for
 
         path_snapshot = path_dir_snapshot / f"snapshot_{_t:04d}.png"        
-        __plot_netowrk(seq_road_geo_container, edge_id2obs, path_snapshot)
+        __plot_netowrk(seq_road_geo_container, 
+                       edge_id2obs, 
+                       time_step_at=_t, 
+                       path_output_png=path_snapshot, 
+                       max_value_color_normalisation=input_array_dataset.observation_array.max().item())
         logger.debug(f"Saved: {path_snapshot}")
         seq_path_pngs.append(path_snapshot)
     # end for
@@ -252,7 +260,7 @@ def main(path_tomo_config: Path,
                       timestep_per_snapshot=timestep_per_snapshot)
     
     # array x
-    path_dir_simulation_x = path_dir_output / 'simulation_x'
+    path_dir_simulation_x = path_dir_output / 'simulation_x_snapshot'
     path_dir_simulation_x.mkdir(parents=True, exist_ok=True)
     generate_snapshot(array_x,
                       seq_road_container, 
@@ -261,7 +269,7 @@ def main(path_tomo_config: Path,
                       timestep_per_snapshot=timestep_per_snapshot)
     
     # array y
-    path_dir_simulation_y = path_dir_output / 'simulation_y'
+    path_dir_simulation_y = path_dir_output / 'simulation_y_snapshot'
     path_dir_simulation_y.mkdir(parents=True, exist_ok=True)
     generate_snapshot(array_y,
                       seq_road_container, 
@@ -273,5 +281,5 @@ def main(path_tomo_config: Path,
 if __name__ == "__main__":
     __path_toml_config = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/cli_tools/simple_analysis/configurations/config_edge_observation.toml')
     __path_sumo_xml = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/original_config/in/most.net.xml')
-    main(__path_toml_config, __path_sumo_xml, timestep_per_snapshot=10)
+    main(__path_toml_config, __path_sumo_xml, timestep_per_snapshot=50)
 
