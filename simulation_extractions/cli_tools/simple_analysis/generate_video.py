@@ -135,10 +135,14 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_coordinate_simulation.Roa
 def generate_snapshot(input_array_dataset: ArraySet, 
                       seq_road_geo_container: ty.List[get_road_coordinate_simulation.RoadLaneObject],
                       path_dir_snapshot: Path,
+                      path_gif_video: Path,
                       timestep_per_snapshot: int = 100):
     assert timestep_per_snapshot > 0, f"timestep_per_snapshot: {timestep_per_snapshot} must be greater than 0"
     
     n_timesteps = input_array_dataset.observation_array.sizes['time']
+    
+    seq_path_pngs = []
+    
     for _t in tqdm(range(0, n_timesteps, timestep_per_snapshot)):
         # 1D array at the time=_t
         array_t = input_array_dataset.observation_array[:, _t]
@@ -155,7 +159,18 @@ def generate_snapshot(input_array_dataset: ArraySet,
         path_snapshot = path_dir_snapshot / f"snapshot_{_t:04d}.png"        
         __plot_netowrk(seq_road_geo_container, edge_id2obs, path_snapshot)
         logger.debug(f"Saved: {path_snapshot}")
-        
+        seq_path_pngs.append(path_snapshot)
+    # end for
+
+    # creating a GIF animation.
+    seq_images = []    
+    for filename in seq_path_pngs:    
+        seq_images.append(iio.imread(filename))    
+    # end for
+    path_gif = path_gif_video
+    iio.imwrite(path_gif, seq_images, duration = 500, loop = 0)
+    logger.debug(f'Saved a GIF file at: {path_gif}')    
+
     
 def _load_simulation_output(path_npz: Path, 
                             key_name_array: str,
@@ -233,15 +248,30 @@ def main(path_tomo_config: Path,
     generate_snapshot(diff_dataset,
                       seq_road_container, 
                       path_dir_l1_snapshot,
+                      path_gif_video=path_dir_output / 'l1_snapshot.gif',
                       timestep_per_snapshot=timestep_per_snapshot)
     
     # array x
+    path_dir_simulation_x = path_dir_output / 'simulation_x'
+    path_dir_simulation_x.mkdir(parents=True, exist_ok=True)
+    generate_snapshot(array_x,
+                      seq_road_container, 
+                      path_dir_simulation_x,
+                      path_gif_video=path_dir_output / 'sim_x.gif',
+                      timestep_per_snapshot=timestep_per_snapshot)
     
     # array y
+    path_dir_simulation_y = path_dir_output / 'simulation_y'
+    path_dir_simulation_y.mkdir(parents=True, exist_ok=True)
+    generate_snapshot(array_y,
+                      seq_road_container, 
+                      path_dir_simulation_y,
+                      path_gif_video=path_dir_output / 'sim_y.gif',
+                      timestep_per_snapshot=timestep_per_snapshot)
     
 
 if __name__ == "__main__":
     __path_toml_config = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/cli_tools/simple_analysis/configurations/config_edge_observation.toml')
     __path_sumo_xml = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/original_config/in/most.net.xml')
-    main(__path_toml_config, __path_sumo_xml, timestep_per_snapshot=100)
+    main(__path_toml_config, __path_sumo_xml, timestep_per_snapshot=10)
 
