@@ -13,6 +13,10 @@ import math
 
 import numpy as np
 
+from dataclasses import dataclass, asdict
+
+from tqdm import tqdm
+
 import datetime
 import geojson
 
@@ -28,8 +32,9 @@ class VariableWeightObject(ty.NamedTuple):
     time_bucket: int
     label: str
     
-
-class GeoAttributeInformation(ty.NamedTuple):
+    
+@dataclass
+class GeoAttributeInformation:
     route_id: str   # lane-id or edge-id
     geo_json: str  # geojson object
     value: float  # value to be visualised
@@ -38,12 +43,15 @@ class GeoAttributeInformation(ty.NamedTuple):
     timestamp: str  # timestamp    
     time_bucket: ty.Optional[int] = None  # time bucket
     
+    def to_dict(self):
+        return asdict(self)
 
 
 class KeplerAttributeGenerator(object):
     def __init__(self,
                  path_sumo_net_xml: Path,
                  path_sumo_sim_xml: Path) -> None:
+        """A class to generate the attributes for the kepler.gl."""
         assert path_sumo_net_xml.exists(), f'path_sumo_net_xml does not exist: {path_sumo_net_xml}'
         self.path_sumo_net_xml = path_sumo_net_xml
         self.path_sumo_sim_xml = path_sumo_sim_xml
@@ -198,7 +206,6 @@ class KeplerAttributeGenerator(object):
         
         return int(_time_start), int(_time_end), time_step
     
-    
     def _get_route_object_type(self, route_id: str) -> str:
         """Get the type of the route object."""
         _lane_id_orig = route_id
@@ -270,9 +277,15 @@ class KeplerAttributeGenerator(object):
             # end if
         # end if        
         
-        assert _t_position is not None and isinstance(_t_position, tuple), f'No position found for {route_id}'
-        _lat = _t_position[0]
-        _lon = _t_position[1]
+        assert _t_position is not None and isinstance(_t_position, (list, tuple)), f'No position found for {route_id}'
+        if isinstance(_t_position, list):
+            _lat = _t_position[0][0]
+            _lon = _t_position[0][1]
+        elif isinstance(_t_position, tuple):
+            _lat = _t_position[0]
+            _lon = _t_position[1]
+        # end if
+        
         # define a URL link to Google Map.
         _gmap_url = f'https://www.google.com/maps/place/{_lat},{_lon}'
         
@@ -284,6 +297,7 @@ class KeplerAttributeGenerator(object):
     def generate_attributes_traffic_observation(self,
                                                 array_traffic_observation: np.ndarray,
                                                 seq_lane_id: ty.List[str],
+                                                time_step_interval_export: int,
                                                 observation_every_step_per: int,
                                                 size_time_bucket: int,
                                                 lane_or_egde: str = 'lane',
@@ -292,7 +306,12 @@ class KeplerAttributeGenerator(object):
                                                 date_timestamp: ty.Optional[datetime.date] = None
                                                 ) -> ty.List[GeoAttributeInformation]:
         """Generating the attribute of geo-info for Kepler.gl. This method is used for the traffic observation.
-        The traffic observation can be, for example, traffic amounts (count), waiting time, etc."""
+        The traffic observation can be, for example, traffic amounts (count), waiting time, etc.
+        
+        Args:
+            time_step_interval_export: User's parameter. Time step interval to export the data.
+            observation_every_step_per: Observation every step in the simulation setting.
+        """
         seq_geojson_obj = []
         
         if date_timestamp is None:
@@ -305,12 +324,12 @@ class KeplerAttributeGenerator(object):
                 
         n_timesteps = array_traffic_observation.shape[1]
         # for _t in range(0, n_timesteps, observation_every_step_per):
-        for _time_step in range(0, n_timesteps, observation_every_step_per):
+        for _time_step in tqdm(range(0, n_timesteps, time_step_interval_export)):
             # computing in which time-buckets the current timestep belongs to.
             _i_time_bucket: int = _time_step // size_time_bucket
             
             # computing the timestamp.
-            _current_hour_min = self._get_simulation_world_time(sim_time_start + _time_step)
+            _current_hour_min = self._get_simulation_world_time(sim_time_start + (_time_step * observation_every_step_per))
             _date_timestamp = f'{date_} {_current_hour_min}'
             
             # for _lane_id in seq_lane_id:
@@ -349,7 +368,7 @@ class KeplerAttributeGenerator(object):
         self,
         seq_variable_weight_model: ty.List[VariableWeightObject],
         observation_every_step_per: int,
-        n_time_bucket: int,
+        size_time_bucket: int,
         lane_or_egde: str = 'lane',
         date_timestamp: ty.Optional[datetime.date] = None) -> ty.List[GeoAttributeInformation]:
         """Generating the attribute of geo-info for Kepler.gl. This method is used for the variable weight model. 
@@ -373,7 +392,7 @@ class KeplerAttributeGenerator(object):
 
             # define a timestamp. Use time-bucket
             _i_time_bucket: int = weight_obj.time_bucket
-            _timestep_bucket_start = sim_time_start + (_i_time_bucket * n_time_bucket * observation_every_step_per)
+            _timestep_bucket_start = sim_time_start + (_i_time_bucket * size_time_bucket * observation_every_step_per)
             _current_hour_min = self._get_simulation_world_time(_timestep_bucket_start)
             _date_timestamp_bucket_start = f'{date_} {_current_hour_min}'
             
