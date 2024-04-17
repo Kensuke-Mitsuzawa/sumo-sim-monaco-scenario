@@ -302,6 +302,7 @@ class KeplerAttributeGenerator(object):
                                                 size_time_bucket: int,
                                                 lane_or_egde: str = 'lane',
                                                 threshold_value: int = 5,
+                                                mode_value: str = 'agg_sum', 
                                                 description_base_text: ty.Optional[str] = None,
                                                 date_timestamp: ty.Optional[datetime.date] = None
                                                 ) -> ty.List[GeoAttributeInformation]:
@@ -313,6 +314,9 @@ class KeplerAttributeGenerator(object):
             observation_every_step_per: Observation every step in the simulation setting.
         """
         seq_geojson_obj = []
+        
+        assert mode_value in ('agg_sum', 'observation_at_t'), f'Unknown mode_value: {mode_value}'
+        
         
         if date_timestamp is None:
             date_ = datetime.date.today().isoformat()
@@ -335,7 +339,18 @@ class KeplerAttributeGenerator(object):
             # for _lane_id in seq_lane_id:
             for _index_route, _route_id in enumerate(seq_lane_id):
                 # getting the value
-                _value = array_traffic_observation[_index_route, _time_step]
+                if mode_value == 'agg_sum':
+                    __t_previous = _time_step - time_step_interval_export
+                    if __t_previous < 0:
+                        _value = array_traffic_observation[_index_route, 0:_time_step].sum()
+                    else:
+                        _value = array_traffic_observation[_index_route, __t_previous:_time_step].sum()
+                elif mode_value == 'observation_at_t':
+                    _value = array_traffic_observation[_index_route, _time_step]
+                else:
+                    raise ValueError(f'Unknown mode_value: {mode_value}')
+                # end if
+
                 if _value < threshold_value:
                     continue
                 # end if
@@ -347,7 +362,7 @@ class KeplerAttributeGenerator(object):
                 _gmap_url = self._generate_google_map_link(_route_id, lane_or_egde)                
                 
                 # generating the description message.
-                _description = f'{description_base_text} at {_route_id} at {_current_hour_min} (time-bucket: {_i_time_bucket})'
+                _description = f'{description_base_text} at {_route_id} at {_current_hour_min} (time-bucket: {_i_time_bucket}). The value mode is {mode_value}.'
                                 
                 # packing all information to the object.
                 __prop = GeoAttributeInformation(
@@ -363,7 +378,6 @@ class KeplerAttributeGenerator(object):
         # } end for
         return seq_geojson_obj
 
-        
     def generate_attributes_variable_weight(
         self,
         seq_variable_weight_model: ty.List[VariableWeightObject],

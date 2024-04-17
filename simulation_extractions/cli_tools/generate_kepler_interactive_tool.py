@@ -5,6 +5,8 @@ import pandas as pd
 
 import numpy as np
 
+import shutil
+
 import jsonlines
 
 from simulation_extractions.parse_sumo_road_map import (
@@ -26,6 +28,7 @@ def main(path_sumo_net_xml: Path,
          path_simulation_array: ty.Optional[Path],
          time_step_interval_export: ty.Optional[int],
          observation_every_step_per: int = 10,
+         observation_threshold_value: int = 5,
          lane_or_egde: str = 'edge'):
     """
     Args:
@@ -54,7 +57,7 @@ def main(path_sumo_net_xml: Path,
         assert 'edge_id' in sim_obj_x, f"Key 'edge_id' not found in {path_simulation_array}"
         
         # generate attributes data of simulation {X, Y} for kepler.gl.
-        logger.debug("Generating attributes data for simulation X...")
+        logger.debug("Generating attributes data for simulation...")
         observation_attr_x = attribute_generator.generate_attributes_traffic_observation(
             array_traffic_observation=sim_obj_x['array'],
             seq_lane_id=sim_obj_x['edge_id'],
@@ -62,7 +65,8 @@ def main(path_sumo_net_xml: Path,
             lane_or_egde=lane_or_egde,
             description_base_text='',
             observation_every_step_per=observation_every_step_per,
-            time_step_interval_export=time_step_interval_export)
+            time_step_interval_export=time_step_interval_export,
+            threshold_value=observation_threshold_value)
         # to dict
         seq_dict_obs = [_o.to_dict() for _o in observation_attr_x]
         pd.DataFrame(seq_dict_obs).to_csv(path_output_csv, index=False)
@@ -105,8 +109,41 @@ def main(path_sumo_net_xml: Path,
         raise ValueError(f"Mode generation not found: {mode_generation}")
     # end if
     
+    
+def _create_l1_distance_observation_ad_hoc(path_array_x: Path,
+                                           path_array_y: Path) -> Path:
+    """I want to create an array of L1 distance between two observation arrays.
+    I create the array and save it to the temporary directory.
+    """
+    import tempfile
+    
+    assert path_array_x.exists(), f"Path does not exist: {path_array_x}"
+    assert path_array_y.exists(), f"Path does not exist: {path_array_y}"
+    
+    # loading array objects and checking
+    sim_obj_x = np.load(path_array_x)
+    assert 'array' in sim_obj_x, f"Key 'array' not found in {path_array_x}"
+    assert 'edge_id' in sim_obj_x, f"Key 'edge_id' not found in {path_array_x}"
+    
+    sim_obj_y = np.load(path_array_y)
+    assert 'array' in sim_obj_y, f"Key 'array' not found in {path_array_y}"
+    assert 'edge_id' in sim_obj_y, f"Key 'edge_id' not found in {path_array_y}"
+    
+    # check the shape.
+    assert sim_obj_x['array'].shape == sim_obj_y['array'].shape, f"Shape mismatch: {sim_obj_x['array'].shape} != {sim_obj_y['array'].shape}"
+    assert sim_obj_x['edge_id'].tolist() == sim_obj_y['edge_id'].tolist(), f"Edge ID mismatch: {sim_obj_x['edge_id']} != {sim_obj_y['edge_id']}"
+    
+    # L1 abs differecne.
+    array_l1_diff = np.abs(sim_obj_x['array'] - sim_obj_y['array'])
+    
+    # saving the the L1 abs diff array. Use the temp. directory path.
+    path_tmp_dir = Path(tempfile.mkdtemp()) / 'l1_array.npz'
+    dict_array = dict(array=array_l1_diff, edge_id=sim_obj_x['edge_id'])
+    np.savez(path_tmp_dir, **dict_array)
+    
+    return path_tmp_dir
 
-def _test():
+def _test_process_array_observation():
 
     path_sumo_net_xml = Path("/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/heavy_blocking_scenario/in/most.net.xml")
     path_sumo_sim_xml = Path("/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/heavy_blocking_scenario/sumo_cfg.cfg")
@@ -174,6 +211,8 @@ def _test():
     
     # -----------------------------------------------------
     # exporting observation data to csv
+    observation_threshold_value = 5
+    
     path_array_x = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_observation.npz")
     
     _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_observation/kepler_csv/observation_x.csv')
@@ -187,7 +226,8 @@ def _test():
         size_time_bucket=size_time_bucket,
         time_step_interval_export=50,
         mode_generation=_mode_generation,
-        path_variable_weight_jsonl=None
+        path_variable_weight_jsonl=None,
+        observation_threshold_value=observation_threshold_value
     )
 
 
@@ -201,9 +241,28 @@ def _test():
         size_time_bucket=size_time_bucket,
         time_step_interval_export=50,
         mode_generation=_mode_generation,
-        path_variable_weight_jsonl=None
+        path_variable_weight_jsonl=None,
+        observation_threshold_value=observation_threshold_value
     )
+    
+    
+    # L1 distance in the observation mode.
+    # I do not have the file yet, so, I create the file here in ad-hoc style.
+    path_temp_l1_array = _create_l1_distance_observation_ad_hoc(path_array_x, path_array_y)
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_observation/kepler_csv/observation_l1_distance.csv')
+    main(
+        path_sumo_net_xml=path_sumo_net_xml,
+        path_sumo_sim_xml=path_sumo_sim_xml,
+        path_simulation_array=path_temp_l1_array,
+        path_output_csv=_path_output_csv,
+        size_time_bucket=size_time_bucket,
+        time_step_interval_export=50,
+        mode_generation=_mode_generation,
+        path_variable_weight_jsonl=None,
+        observation_threshold_value=observation_threshold_value
+    )
+    path_temp_l1_array.unlink()
 
 
 if __name__ == '__main__':
-    _test()
+    _test_process_array_observation()
