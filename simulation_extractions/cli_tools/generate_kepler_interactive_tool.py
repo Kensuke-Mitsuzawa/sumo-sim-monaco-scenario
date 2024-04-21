@@ -153,18 +153,18 @@ def _test_process_array_traffic_count():
     # exporting variable weights to csv
     
     # MMD CV AGG
-    # path_var_detection_mmd_cv_agg = Path("")
-    # _path_output_csv = Path('')
-    # _mode_generation = 'variable'
-    # main(
-    #     path_sumo_net_xml=path_sumo_net_xml,
-    #     path_sumo_sim_xml=path_sumo_sim_xml,        
-    #     path_output_csv=_path_output_csv,
-    #     mode_generation=_mode_generation,
-    #     path_variable_weight_jsonl=path_var_detection_mmd_cv_agg,
-    #     size_time_bucket=size_time_bucket,
-    #     path_simulation_array=None,
-    #     time_step_interval_export=None)
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/output_jsons/edge_count/interpretable_mmd-cv_selection.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/kepler_csv/variable_detection_mmd_cv_agg.csv')
+    _mode_generation = 'variable'
+    main(
+        path_sumo_net_xml=path_sumo_net_xml,
+        path_sumo_sim_xml=path_sumo_sim_xml,        
+        path_output_csv=_path_output_csv,
+        mode_generation=_mode_generation,
+        path_variable_weight_jsonl=path_var_detection_mmd_cv_agg,
+        size_time_bucket=size_time_bucket,
+        path_simulation_array=None,
+        time_step_interval_export=None)
     
     # MMD Alg one
     path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/output_jsons/edge_count/interpretable_mmd-algorithm_one.jsonl")
@@ -180,7 +180,7 @@ def _test_process_array_traffic_count():
         path_simulation_array=None,
         time_step_interval_export=None)
     
-    # MMD Alg one
+    # Wasserstein baseline
     path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/output_jsons/edge_count/wasserstein_independence-.jsonl")
     _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/kepler_csv/variable_detection_wasserstein_baseline.csv')
     _mode_generation = 'variable'
