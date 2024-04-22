@@ -301,7 +301,7 @@ class KeplerAttributeGenerator(object):
                                                 observation_every_step_per: int,
                                                 size_time_bucket: int,
                                                 lane_or_egde: str = 'lane',
-                                                threshold_value: int = 5,
+                                                threshold_value: float = 5.0,
                                                 mode_value: str = 'agg_sum', 
                                                 description_base_text: ty.Optional[str] = None,
                                                 date_timestamp: ty.Optional[datetime.date] = None
@@ -332,6 +332,9 @@ class KeplerAttributeGenerator(object):
             # computing in which time-buckets the current timestep belongs to.
             _i_time_bucket: int = _time_step // size_time_bucket
             
+            _is_bucket_first_step = _time_step % size_time_bucket == 0
+            _is_bucket_final_step = (_time_step + time_step_interval_export) % size_time_bucket == 0
+            
             # computing the timestamp.
             _current_hour_min = self._get_simulation_world_time(sim_time_start + (_time_step * observation_every_step_per))
             _date_timestamp = f'{date_} {_current_hour_min}'
@@ -351,7 +354,8 @@ class KeplerAttributeGenerator(object):
                     raise ValueError(f'Unknown mode_value: {mode_value}')
                 # end if
 
-                if _value < threshold_value:
+                if _value < threshold_value and (not _is_bucket_first_step and not _is_bucket_final_step):
+                    # note: I need to save the first record, even though the value is less than the threshold.
                     continue
                 # end if
                 

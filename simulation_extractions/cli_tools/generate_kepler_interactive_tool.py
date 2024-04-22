@@ -28,7 +28,7 @@ def main(path_sumo_net_xml: Path,
          path_simulation_array: ty.Optional[Path],
          time_step_interval_export: ty.Optional[int],
          observation_every_step_per: int = 10,
-         observation_threshold_value: int = 5,
+         observation_threshold_value: float = 5.0,
          lane_or_egde: str = 'edge'):
     """
     Args:
@@ -302,7 +302,7 @@ def _test_process_array_waiting_time():
 
     # -----------------------------------------------------
     # exporting observation data to csv
-    observation_threshold_value = 5
+    observation_threshold_value = 0.5
     
     path_array_x = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_waiting_time.npz")
     
@@ -409,39 +409,38 @@ def _test_process_array_density():
 
     # -----------------------------------------------------
     # exporting observation data to csv
-    observation_threshold_value = 5
+    observation_threshold_value = 1.0
     
     path_array_x = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_density.npz")
     
     _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_density/kepler_csv/observation_x.csv')
-    _mode_generation = 'observation'
-    
-    main(
-        path_sumo_net_xml=path_sumo_net_xml,
-        path_sumo_sim_xml=path_sumo_sim_xml,
-        path_simulation_array=path_array_x,
-        path_output_csv=_path_output_csv,
-        size_time_bucket=size_time_bucket,
-        time_step_interval_export=50,
-        mode_generation=_mode_generation,
-        path_variable_weight_jsonl=None,
-        observation_threshold_value=observation_threshold_value
-    )
+    _mode_generation = 'observation'    
+    # main(
+    #     path_sumo_net_xml=path_sumo_net_xml,
+    #     path_sumo_sim_xml=path_sumo_sim_xml,
+    #     path_simulation_array=path_array_x,
+    #     path_output_csv=_path_output_csv,
+    #     size_time_bucket=size_time_bucket,
+    #     time_step_interval_export=50,
+    #     mode_generation=_mode_generation,
+    #     path_variable_weight_jsonl=None,
+    #     observation_threshold_value=observation_threshold_value
+    # )
 
 
     path_array_y = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y/edge_density.npz")
     _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_density/kepler_csv/observation_y.csv')
-    main(
-        path_sumo_net_xml=path_sumo_net_xml,
-        path_sumo_sim_xml=path_sumo_sim_xml,
-        path_simulation_array=path_array_y,
-        path_output_csv=_path_output_csv,
-        size_time_bucket=size_time_bucket,
-        time_step_interval_export=50,
-        mode_generation=_mode_generation,
-        path_variable_weight_jsonl=None,
-        observation_threshold_value=observation_threshold_value
-    )
+    # main(
+    #     path_sumo_net_xml=path_sumo_net_xml,
+    #     path_sumo_sim_xml=path_sumo_sim_xml,
+    #     path_simulation_array=path_array_y,
+    #     path_output_csv=_path_output_csv,
+    #     size_time_bucket=size_time_bucket,
+    #     time_step_interval_export=50,
+    #     mode_generation=_mode_generation,
+    #     path_variable_weight_jsonl=None,
+    #     observation_threshold_value=observation_threshold_value
+    # )
     
     
     # L1 distance in the observation mode.
@@ -465,4 +464,4 @@ def _test_process_array_density():
 if __name__ == '__main__':
     _test_process_array_traffic_count()
     _test_process_array_waiting_time()
-    _test_process_array_density()
+    # _test_process_array_density()
