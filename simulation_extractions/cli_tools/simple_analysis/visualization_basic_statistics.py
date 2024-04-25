@@ -166,7 +166,7 @@ def __plot_heatmap(config_obj: Config,
 def __plot_time_series_agg(config_obj: Config, 
                            array_sim_x: np.ndarray, 
                            vector_timestep: np.ndarray,
-                           array_sim_y: ty.Optional[np.ndarray],):
+                           array_sim_y: ty.Optional[np.ndarray]):
     """This function plots a time series graph.
     X-axis: time-stamp, Y-axis: aggregated values.
     """
@@ -176,6 +176,7 @@ def __plot_time_series_agg(config_obj: Config,
     Path(config_obj.Resoruce.output.path_output_png).mkdir(parents=True, exist_ok=True)
     _f_file_png = Path(config_obj.Resoruce.output.path_output_png) / f'{_file_name}.png'
     
+    interval_time_bucket = config_obj.Aggregation.n_time_bucket
     
     _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(10, 6))
     # end if
@@ -195,6 +196,12 @@ def __plot_time_series_agg(config_obj: Config,
                      average_value_x + std_value_x, 
                      color='red', 
                      alpha=0.1, label='Std Deviation')
+    if interval_time_bucket is not None:
+        # drawing vertical lines repsecting interval_time_bucket.
+        for i in range(0, len(average_value_x), interval_time_bucket):
+            _ax.axvline(x=i, color='green', linestyle='--')
+        # end for
+    # end for
 
     # y-side
     if array_sim_y is not None:
@@ -210,6 +217,12 @@ def __plot_time_series_agg(config_obj: Config,
                          average_value_y + std_value_y, 
                          color='blue', 
                          alpha=0.1, label='Std Deviation')
+        if interval_time_bucket is not None:
+            # drawing vertical lines repsecting interval_time_bucket.
+            for i in range(0, len(average_value_x), interval_time_bucket):
+                _ax.axvline(x=i, color='green', linestyle='--')
+            # end for
+        # end if
     # end if
     
     input_file_name = Path(config_obj.Resoruce.input_x.path_simulation_output).stem

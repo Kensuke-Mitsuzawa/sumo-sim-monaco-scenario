@@ -331,7 +331,7 @@ class KeplerAttributeGenerator(object):
         # for _t in range(0, n_timesteps, observation_every_step_per):
         for _time_step in tqdm(range(0, n_timesteps, time_step_interval_export)):
             # computing in which time-buckets the current timestep belongs to.
-            _i_time_bucket: int = _time_step // size_time_bucket
+            _i_time_bucket: int = (_time_step // size_time_bucket) + 1
             
             _is_bucket_first_step = _time_step % size_time_bucket == 0
             _is_bucket_final_step = (_time_step + time_step_interval_export) % size_time_bucket == 0
@@ -434,12 +434,26 @@ class KeplerAttributeGenerator(object):
         # end if
         
         sim_time_start, __, time_time_step = self.extract_simulation_time()
+
+        # check the time bucket starting value. Starting at 1 or 0?
+        _bucket_index_start: int = min([d.time_bucket for d in seq_variable_weight_model])
+        if _bucket_index_start == 0:
+            is_add_one = True
+        else:
+            is_add_one = False
+        # end if
+
         
         for weight_obj in seq_variable_weight_model:
             # comment: the key name is 'lane_id', yet possibly "edge-id".
 
             # define a timestamp. Use time-bucket
-            _i_time_bucket: int = weight_obj.time_bucket
+            if is_add_one:
+                _i_time_bucket: int = weight_obj.time_bucket + 1
+            else:
+                _i_time_bucket: int = weight_obj.time_bucket
+            # end if
+            
             _timestep_bucket_start = sim_time_start + (_i_time_bucket * size_time_bucket * observation_every_step_per)
             _current_hour_min = self._get_simulation_world_time(_timestep_bucket_start)
             _date_timestamp_bucket_start = f'{date_} {_current_hour_min}'
