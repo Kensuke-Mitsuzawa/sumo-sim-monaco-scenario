@@ -304,7 +304,8 @@ class KeplerAttributeGenerator(object):
                                                 threshold_value: float = 5.0,
                                                 mode_value: str = 'agg_sum', 
                                                 description_base_text: ty.Optional[str] = None,
-                                                date_timestamp: ty.Optional[datetime.date] = None
+                                                date_timestamp: ty.Optional[datetime.date] = None,
+                                                aux_array_is_x_more_y: ty.Optional[np.ndarray] = None
                                                 ) -> ty.List[GeoAttributeInformation]:
         """Generating the attribute of geo-info for Kepler.gl. This method is used for the traffic observation.
         The traffic observation can be, for example, traffic amounts (count), waiting time, etc.
@@ -365,9 +366,38 @@ class KeplerAttributeGenerator(object):
                 # getting the url link to the Google Map
                 _gmap_url = self._generate_google_map_link(_route_id, lane_or_egde)                
                 
+                # refer to the aux_array_is_x_more_y, get which variable is bigger.
+                if aux_array_is_x_more_y is not None:
+                    if mode_value == 'agg_sum':
+                        __t_previous = _time_step - time_step_interval_export
+                        if __t_previous < 0:
+                            _array_boolean_flag = aux_array_is_x_more_y[_index_route, 0:_time_step]
+                        else:
+                            _array_boolean_flag = aux_array_is_x_more_y[_index_route, __t_previous:_time_step]
+                        # end if
+
+                        from collections import Counter
+                        # counting the number of True/False values.
+                        _dict_count = dict(Counter(_array_boolean_flag.tolist()))
+                        if sum(_dict_count.values()) > 0:
+                            __message = 'Frequency. N(X>Y): {}, N(X<Y): {}'.format(_dict_count.get(True, 0), _dict_count.get(False, 0))
+                        else:
+                            __message = ''
+                        # end if
+                    elif mode_value == 'observation_at_t':
+                        _array_boolean_flag = aux_array_is_x_more_y[_index_route, _time_step]
+                        __message = 'X>Y' if _array_boolean_flag else 'X<Y'
+                    else:
+                        raise ValueError(f'Unknown mode_value: {mode_value}')
+                    # end if
+                else:
+                    __message = ''
+                # end if
+
                 # generating the description message.
                 _description = f'{description_base_text} at {_route_id} at {_current_hour_min} (time-bucket: {_i_time_bucket}). The value mode is {mode_value}.'
-                                
+                _description += f' {__message}'
+
                 # packing all information to the object.
                 __prop = GeoAttributeInformation(
                     route_id=_route_id,

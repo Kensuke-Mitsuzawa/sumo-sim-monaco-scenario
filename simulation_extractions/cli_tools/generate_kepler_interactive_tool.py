@@ -9,6 +9,8 @@ import shutil
 
 import jsonlines
 
+import datetime
+
 from simulation_extractions.parse_sumo_road_map import (
     KeplerAttributeGenerator,
     GeoAttributeInformation,
@@ -29,11 +31,15 @@ def main(path_sumo_net_xml: Path,
          time_step_interval_export: ty.Optional[int],
          observation_every_step_per: int = 10,
          observation_threshold_value: float = 5.0,
-         lane_or_egde: str = 'edge'):
+         lane_or_egde: str = 'edge',
+         date_default: datetime.date = datetime.date(2023, 4, 1),
+         aux_array_is_x_more_y: ty.Optional[np.ndarray] = None,):
     """
     Args:
         time_step_interval_export (int): User's parameter. Time step interval to export the data.
         observation_every_step_per (int): Observation every step in the simulation setting.
+        aux_array_is_x_more_y (np.ndarray): Array of boolean values. If True, X is more than Y. If False, Y is more than X.
+            This array is used only for aux. information of L1 distance.
     """
     assert path_sumo_net_xml.exists(), f"Path does not exist: {path_sumo_net_xml}"
     assert path_sumo_sim_xml.exists(), f"Path does not exist: {path_sumo_sim_xml}"
@@ -66,7 +72,9 @@ def main(path_sumo_net_xml: Path,
             description_base_text='',
             observation_every_step_per=observation_every_step_per,
             time_step_interval_export=time_step_interval_export,
-            threshold_value=observation_threshold_value)
+            threshold_value=observation_threshold_value,
+            date_timestamp=date_default,
+            aux_array_is_x_more_y=aux_array_is_x_more_y)
         # to dict
         seq_dict_obs = [_o.to_dict() for _o in observation_attr_x]
         pd.DataFrame(seq_dict_obs).to_csv(path_output_csv, index=False)
@@ -88,6 +96,7 @@ def main(path_sumo_net_xml: Path,
                 else:
                     raise ValueError(f"Key 'route_id' or 'lane_id' not found in {_o}")
                 # end if
+
                 _obj = VariableWeightObject(**_o)
                 seq_variable_weight.append(_obj)
             # end for
@@ -100,7 +109,8 @@ def main(path_sumo_net_xml: Path,
             seq_variable_weight_model=seq_variable_weight,
             observation_every_step_per=observation_every_step_per,
             lane_or_egde=lane_or_egde,
-            size_time_bucket=size_time_bucket)
+            size_time_bucket=size_time_bucket,
+            date_timestamp=date_default)
         # to dict
         seq_dict_obs = [_o.to_dict() for _o in observation_attr]
         pd.DataFrame(seq_dict_obs).to_csv(path_output_csv, index=False)
@@ -111,7 +121,7 @@ def main(path_sumo_net_xml: Path,
     
     
 def _create_l1_distance_observation_ad_hoc(path_array_x: Path,
-                                           path_array_y: Path) -> Path:
+                                           path_array_y: Path) -> ty.Tuple[Path, np.ndarray]:
     """I want to create an array of L1 distance between two observation arrays.
     I create the array and save it to the temporary directory.
     """
@@ -140,8 +150,12 @@ def _create_l1_distance_observation_ad_hoc(path_array_x: Path,
     path_tmp_dir = Path(tempfile.mkdtemp()) / 'l1_array.npz'
     dict_array = dict(array=array_l1_diff, edge_id=sim_obj_x['edge_id'])
     np.savez(path_tmp_dir, **dict_array)
+
+    # aux. information
+    aux_array_is_x_more_y = sim_obj_x['array'] > sim_obj_y['array']
     
-    return path_tmp_dir
+    return path_tmp_dir, aux_array_is_x_more_y
+
 
 def _test_process_array_traffic_count():
 
@@ -153,8 +167,8 @@ def _test_process_array_traffic_count():
     # exporting variable weights to csv
     
     # MMD CV AGG
-    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/output_jsons/edge_count/interpretable_mmd-cv_selection.jsonl")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/kepler_csv/variable_detection_mmd_cv_agg.csv')
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/output_jsons/edge_count/interpretable_mmd-cv_selection.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/variable_detection_mmd_cv_agg.csv')
     _mode_generation = 'variable'
     main(
         path_sumo_net_xml=path_sumo_net_xml,
@@ -167,8 +181,8 @@ def _test_process_array_traffic_count():
         time_step_interval_export=None)
     
     # MMD Alg one
-    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/output_jsons/edge_count/interpretable_mmd-algorithm_one.jsonl")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/kepler_csv/variable_detection_mmd_alg_one.csv')
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/output_jsons/edge_count/interpretable_mmd-algorithm_one.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/variable_detection_mmd_alg_one.csv')
     _mode_generation = 'variable'
     main(
         path_sumo_net_xml=path_sumo_net_xml,
@@ -181,8 +195,8 @@ def _test_process_array_traffic_count():
         time_step_interval_export=None)
     
     # Wasserstein baseline
-    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/output_jsons/edge_count/wasserstein_independence-.jsonl")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/kepler_csv/variable_detection_wasserstein_baseline.csv')
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/output_jsons/edge_count/wasserstein_independence-.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/variable_detection_wasserstein_baseline.csv')
     _mode_generation = 'variable'
     main(
         path_sumo_net_xml=path_sumo_net_xml,
@@ -199,41 +213,41 @@ def _test_process_array_traffic_count():
     observation_threshold_value = 5
     
     path_array_x = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_count.npz")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/kepler_csv/observation_x.csv')
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_x.csv')
     _mode_generation = 'observation'
     
-    main(
-        path_sumo_net_xml=path_sumo_net_xml,
-        path_sumo_sim_xml=path_sumo_sim_xml,
-        path_simulation_array=path_array_x,
-        path_output_csv=_path_output_csv,
-        size_time_bucket=size_time_bucket,
-        time_step_interval_export=50,
-        mode_generation=_mode_generation,
-        path_variable_weight_jsonl=None,
-        observation_threshold_value=observation_threshold_value
-    )
+    # main(
+    #     path_sumo_net_xml=path_sumo_net_xml,
+    #     path_sumo_sim_xml=path_sumo_sim_xml,
+    #     path_simulation_array=path_array_x,
+    #     path_output_csv=_path_output_csv,
+    #     size_time_bucket=size_time_bucket,
+    #     time_step_interval_export=100,
+    #     mode_generation=_mode_generation,
+    #     path_variable_weight_jsonl=None,
+    #     observation_threshold_value=observation_threshold_value
+    # )
 
 
     path_array_y = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y/edge_count.npz")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/kepler_csv/observation_y.csv')
-    main(
-        path_sumo_net_xml=path_sumo_net_xml,
-        path_sumo_sim_xml=path_sumo_sim_xml,
-        path_simulation_array=path_array_y,
-        path_output_csv=_path_output_csv,
-        size_time_bucket=size_time_bucket,
-        time_step_interval_export=50,
-        mode_generation=_mode_generation,
-        path_variable_weight_jsonl=None,
-        observation_threshold_value=observation_threshold_value
-    )
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_y.csv')
+    # main(
+    #     path_sumo_net_xml=path_sumo_net_xml,
+    #     path_sumo_sim_xml=path_sumo_sim_xml,
+    #     path_simulation_array=path_array_y,
+    #     path_output_csv=_path_output_csv,
+    #     size_time_bucket=size_time_bucket,
+    #     time_step_interval_export=100,
+    #     mode_generation=_mode_generation,
+    #     path_variable_weight_jsonl=None,
+    #     observation_threshold_value=observation_threshold_value
+    # )
     
     
     # L1 distance in the observation mode.
     # I do not have the file yet, so, I create the file here in ad-hoc style.
-    path_temp_l1_array = _create_l1_distance_observation_ad_hoc(path_array_x, path_array_y)
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_count/kepler_csv/observation_l1_distance.csv')
+    path_temp_l1_array, array_is_x_more_y = _create_l1_distance_observation_ad_hoc(path_array_x, path_array_y)
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_l1_distance.csv')
     main(
         path_sumo_net_xml=path_sumo_net_xml,
         path_sumo_sim_xml=path_sumo_sim_xml,
@@ -243,7 +257,8 @@ def _test_process_array_traffic_count():
         time_step_interval_export=50,
         mode_generation=_mode_generation,
         path_variable_weight_jsonl=None,
-        observation_threshold_value=observation_threshold_value
+        observation_threshold_value=observation_threshold_value,
+        aux_array_is_x_more_y=array_is_x_more_y
     )
     path_temp_l1_array.unlink()
 
@@ -258,8 +273,8 @@ def _test_process_array_waiting_time():
     # exporting variable weights to csv
     
     # MMD CV AGG
-    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/output_jsons/edge_waiting_time/interpretable_mmd-cv_selection.jsonl")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/kepler_csv/variable_detection_mmd_cv_agg.csv')
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/output_jsons/edge_waiting_time/interpretable_mmd-cv_selection.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/kepler_csv/variable_detection_mmd_cv_agg.csv')
     _mode_generation = 'variable'
     main(
         path_sumo_net_xml=path_sumo_net_xml,
@@ -272,8 +287,8 @@ def _test_process_array_waiting_time():
         time_step_interval_export=None)
     
     # MMD Alg one
-    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/output_jsons/edge_waiting_time/interpretable_mmd-algorithm_one.jsonl")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/kepler_csv/variable_detection_mmd_alg_one.csv')
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/output_jsons/edge_waiting_time/interpretable_mmd-algorithm_one.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/kepler_csv/variable_detection_mmd_alg_one.csv')
     _mode_generation = 'variable'
     main(
         path_sumo_net_xml=path_sumo_net_xml,
@@ -286,8 +301,8 @@ def _test_process_array_waiting_time():
         time_step_interval_export=None)
     
     # MMD Alg one
-    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/output_jsons/edge_waiting_time/wasserstein_independence-.jsonl")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/kepler_csv/variable_detection_wasserstein_baseline.csv')
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/output_jsons/edge_waiting_time/wasserstein_independence-.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/kepler_csv/variable_detection_wasserstein_baseline.csv')
     _mode_generation = 'variable'
     main(
         path_sumo_net_xml=path_sumo_net_xml,
@@ -306,7 +321,7 @@ def _test_process_array_waiting_time():
     
     path_array_x = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_waiting_time.npz")
     
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/kepler_csv/observation_x.csv')
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/kepler_csv/observation_x.csv')
     _mode_generation = 'observation'
     
     main(
@@ -323,7 +338,7 @@ def _test_process_array_waiting_time():
 
 
     path_array_y = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y/edge_waiting_time.npz")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/kepler_csv/observation_y.csv')
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/kepler_csv/observation_y.csv')
     main(
         path_sumo_net_xml=path_sumo_net_xml,
         path_sumo_sim_xml=path_sumo_sim_xml,
@@ -339,8 +354,8 @@ def _test_process_array_waiting_time():
     
     # L1 distance in the observation mode.
     # I do not have the file yet, so, I create the file here in ad-hoc style.
-    path_temp_l1_array = _create_l1_distance_observation_ad_hoc(path_array_x, path_array_y)
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/0/edge_waiting_time/kepler_csv/observation_l1_distance.csv')
+    path_temp_l1_array, array_is_x_more_y = _create_l1_distance_observation_ad_hoc(path_array_x, path_array_y)
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_waiting_time/kepler_csv/observation_l1_distance.csv')
     main(
         path_sumo_net_xml=path_sumo_net_xml,
         path_sumo_sim_xml=path_sumo_sim_xml,
@@ -350,7 +365,8 @@ def _test_process_array_waiting_time():
         time_step_interval_export=50,
         mode_generation=_mode_generation,
         path_variable_weight_jsonl=None,
-        observation_threshold_value=observation_threshold_value
+        observation_threshold_value=observation_threshold_value,
+        aux_array_is_x_more_y=array_is_x_more_y
     )
     path_temp_l1_array.unlink()
 
