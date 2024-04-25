@@ -22,6 +22,7 @@ class EdgeInformation(ty.NamedTuple):
     density: float
     waiting_time: float
     time_loss: float
+    speed: float
 # end class
 
 
@@ -44,7 +45,8 @@ def parse_edge_observation(path_sumo_net_xml: Path,
                            file_name_density: str = 'edge_density.npz',
                            file_name_waiting_time: str = 'edge_waiting_time.npz',
                            file_name_time_loss: str = 'edge_time_loss.npz',
-                           file_name_count: str = 'edge_count.npz'):
+                           file_name_count: str = 'edge_count.npz',
+                           file_name_speed: str = 'edge_speed.npz'):
     """
     A parser script of SUMO edge file output.
     See: https://sumo.dlr.de/docs/Simulation/Output/Lane-_or_Edge-based_Traffic_Measures.html#generated_output
@@ -81,6 +83,7 @@ def parse_edge_observation(path_sumo_net_xml: Path,
                     waiting_time=_edge_elem.attrib.get('waitingTime', 0.0),
                     time_loss=_edge_elem.attrib.get('timeLoss', 0.0),
                     sample_count=_edge_elem.attrib.get('sampledSeconds', 0),
+                    speed=_edge_elem.attrib.get('speed', 0.0),
                 )
                 stack_edge_info.append(_e_info)
             # end for
@@ -94,6 +97,7 @@ def parse_edge_observation(path_sumo_net_xml: Path,
     array_waiting_time = np.zeros([len(seq_edge_ids), count_time_interval])
     array_time_loss = np.zeros([len(seq_edge_ids), count_time_interval])
     array_sample_count = np.zeros([len(seq_edge_ids), count_time_interval])
+    array_speed = np.zeros([len(seq_edge_ids), count_time_interval])
 
     # putting values to arrays
     _vector_time_interval = np.array(['-'.join(_t) for _t in stack_time_interval])
@@ -105,6 +109,7 @@ def parse_edge_observation(path_sumo_net_xml: Path,
         array_waiting_time[_j, _i] = _e_info.waiting_time
         array_time_loss[_j, _i] = _e_info.time_loss
         array_sample_count[_j, _i] = _e_info.sample_count
+        array_speed[_j, _i] = _e_info.speed
     # end for
 
     # saving files
@@ -113,6 +118,7 @@ def parse_edge_observation(path_sumo_net_xml: Path,
     path_npz_waiting_time = path_work_dir / file_name_waiting_time
     path_npz_time_loss = path_work_dir / file_name_time_loss
     path_npz_sample_count = path_work_dir / file_name_count
+    path_npz_speed = path_work_dir / file_name_speed
     
     # vechile count
     save_object_array = {'array': array_sample_count, 'edge_id': seq_edge_ids, 'timestamps': stack_time_interval}
@@ -133,6 +139,10 @@ def parse_edge_observation(path_sumo_net_xml: Path,
     # time loss
     save_object_array = {'array': array_time_loss, 'edge_id': seq_edge_ids, 'timestamps': stack_time_interval}
     np.savez_compressed(path_npz_time_loss, **save_object_array)
+    
+    # speed
+    save_object_array = {'array': array_speed, 'edge_id': seq_edge_ids, 'timestamps': stack_time_interval}
+    np.savez_compressed(path_npz_speed, **save_object_array)
 # end def    
     
     

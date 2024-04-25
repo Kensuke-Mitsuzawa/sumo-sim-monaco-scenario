@@ -5,10 +5,10 @@
         path_output_heatmap = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/heatmap-png/0/'
 
     [Resoruce.input_x]
-        path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_travel_time.npz'
+        path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_speed.npz'
         key_name_lane_or_edge_id_vector = 'edge_id'
     [Resoruce.input_y]
-        path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y/edge_travel_time.npz'
+        path_simulation_output = '/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y/edge_speed.npz'
         key_name_lane_or_edge_id_vector = 'edge_id'
 
 [Aggregation]
