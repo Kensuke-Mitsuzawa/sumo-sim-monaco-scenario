@@ -112,8 +112,8 @@ def test():
     path_output_dir = Path("/tmp/path_test_output_dir")
     path_array_x_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x")
     path_array_y_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y")
-    name_metric = "edge_waiting_time"
-    edge_id = '-153492'
+    name_metric = "edge_count"
+    edge_id = '152763'
     bucket_id = 3
     bucket_size = 500
 
