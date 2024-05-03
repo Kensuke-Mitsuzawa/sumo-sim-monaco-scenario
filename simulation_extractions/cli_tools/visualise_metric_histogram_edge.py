@@ -106,14 +106,14 @@ def main(
     
     
     logger.debug(f'Saved {path_png}')
-    
 
-def test():
+
+def test_one_road():
     path_output_dir = Path("/tmp/path_test_output_dir")
     path_array_x_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x")
     path_array_y_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y")
     name_metric = "edge_count"
-    edge_id = '152763'
+    edge_id = '152948#0'
     bucket_id = 3
     bucket_size = 500
 
@@ -131,4 +131,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_one_road()

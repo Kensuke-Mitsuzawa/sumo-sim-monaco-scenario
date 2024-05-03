@@ -463,6 +463,47 @@ def _test_process_array_traveltime():
     size_time_bucket = 500
     # -----------------------------------------------------
     # exporting variable weights to csv
+    # MMD CV AGG
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_travel_time/output_jsons/edge_travel_time/interpretable_mmd-cv_selection.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_travel_time/kepler_csv/variable_detection_mmd_cv_agg.csv')
+    _mode_generation = 'variable'
+    main(
+        path_sumo_net_xml=path_sumo_net_xml,
+        path_sumo_sim_xml=path_sumo_sim_xml,        
+        path_output_csv=_path_output_csv,
+        mode_generation=_mode_generation,
+        path_variable_weight_jsonl=path_var_detection_mmd_cv_agg,
+        size_time_bucket=size_time_bucket,
+        path_simulation_array=None,
+        time_step_interval_export=None)
+    
+    # MMD Alg one
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_travel_time/output_jsons/edge_travel_time/interpretable_mmd-algorithm_one.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_travel_time/kepler_csv/variable_detection_mmd_alg_one.csv')
+    _mode_generation = 'variable'
+    main(
+        path_sumo_net_xml=path_sumo_net_xml,
+        path_sumo_sim_xml=path_sumo_sim_xml,        
+        path_output_csv=_path_output_csv,
+        mode_generation=_mode_generation,
+        path_variable_weight_jsonl=path_var_detection_mmd_cv_agg,
+        size_time_bucket=size_time_bucket,
+        path_simulation_array=None,
+        time_step_interval_export=None)
+    
+    # Wasserstein baseline
+    path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_travel_time/output_jsons/edge_travel_time/wasserstein_independence-.jsonl")
+    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_travel_time/kepler_csv/variable_detection_wasserstein_baseline.csv')
+    _mode_generation = 'variable'
+    main(
+        path_sumo_net_xml=path_sumo_net_xml,
+        path_sumo_sim_xml=path_sumo_sim_xml,        
+        path_output_csv=_path_output_csv,
+        mode_generation=_mode_generation,
+        path_variable_weight_jsonl=path_var_detection_mmd_cv_agg,
+        size_time_bucket=size_time_bucket,
+        path_simulation_array=None,
+        time_step_interval_export=None)
         
     # -----------------------------------------------------
     # exporting observation data to csv
@@ -498,5 +539,5 @@ def _test_process_array_traveltime():
 if __name__ == '__main__':
     # _test_process_array_traffic_count()
     # _test_process_array_waiting_time()
-    # _test_process_array_traveltime()
-    _test_process_array_density()
+    _test_process_array_traveltime()
+    # _test_process_array_density()
