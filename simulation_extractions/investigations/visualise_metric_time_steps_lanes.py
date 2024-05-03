@@ -76,10 +76,57 @@ def parse_lane_observation(path_lane_observation: Path
     return seq_lane_observations
 
 
+def parse_edge_observation(path_edge_observation: Path
+                           ) -> ty.List[LaneObservationContainer]:
+    """Parse the lane-observation file.
+    """
+    seq_lane_observations = []
+    
+    iter_elems = ET.iterparse(path_edge_observation.as_posix())
+    for event, _elem in tqdm.tqdm(iter_elems):
+        # _iter_interval_node = _elem.findall('interval')
+        # for _node_interval in _iter_interval_node:
+        if _elem.tag == 'interval':
+            _time_step_begin = float(_elem.attrib['begin'])
+            _time_step_end = float(_elem.attrib['end'])
+            # extracting lane-nodes
+            _iter_lane_node = _elem.findall('edge')
+            for _node_lane in _iter_lane_node:
+                _edge_id = _node_lane.attrib['id']
+                
+                # collecting metrics
+                if 'sampledSeconds' in _node_lane.attrib:
+                    _count = float(_node_lane.attrib['sampledSeconds'])
+                else:
+                    _count = 0.0
+                # end if
+                if 'laneDensity' in _node_lane.attrib:
+                    _density = float(_node_lane.attrib['laneDensity'])
+                else:
+                    _density = 0.0
+                # end if
+
+                _obs_container = LaneObservationContainer(
+                    lane_id='',
+                    edge_id=_edge_id,
+                    time_begin=_time_step_begin,
+                    time_end=_time_step_end,
+                    count_vehicles=_count,
+                    density=_density)
+                seq_lane_observations.append(_obs_container)
+            # end for
+        # end for
+    # end for
+    return seq_lane_observations
+
+
 def plot_lane_observation(path_save_png: Path, 
                           lane_id: str, 
                           seq_lane_observations_x: ty.List[LaneObservationContainer],
-                          seq_lane_observations_y: ty.List[LaneObservationContainer]):
+                          seq_lane_observations_y: ty.List[LaneObservationContainer],
+                          size_bucket: int = 5000,
+                          t_start: int = 14400,
+                          t_end: int = 50400):
     # sorting by time
     seq_lane_observations_x.sort(key=lambda x: x.time_begin)
     seq_lane_observations_y.sort(key=lambda x: x.time_begin)
@@ -102,11 +149,15 @@ def plot_lane_observation(path_save_png: Path,
     # end if
 
     # path of the count png
-    path_png_count = path_save_png / f'count-{lane_id}.png'
+    path_png_count = path_save_png / f'{lane_id}.png'
     # plot count
     f, ax = plt.subplots(1, 1, figsize=(10, 5))
 
-    sns.lineplot(x='time', y='value', hue='variable', data=df_count, ax=ax)
+    sns.lineplot(x='time', y='value', hue='variable', data=df_count, ax=ax, alpha=0.3)
+    for _t in range(t_start, t_end, size_bucket):
+        ax.axvline(x=_t, color='green', alpha=0.5)
+    # end for
+
     ax.set_title(f'Count vehicles: {lane_id}')
     ax.set_xlabel('Time step')
     ax.set_ylabel('Count vehicles')
@@ -117,23 +168,39 @@ def plot_lane_observation(path_save_png: Path,
 
 def main(path_lane_observation_x: Path,
          path_lane_observation_y: Path,
-         path_dir_output: Path):
-    seq_lane_observations_x = parse_lane_observation(path_lane_observation_x)
-    seq_lane_observations_y = parse_lane_observation(path_lane_observation_y)    
+         path_dir_output: Path,
+         vis_by_lane: bool = True):
+    if vis_by_lane:
+        seq_lane_observations_x = parse_lane_observation(path_lane_observation_x)
+        seq_lane_observations_y = parse_lane_observation(path_lane_observation_y)
+    else:
+        seq_lane_observations_x = parse_edge_observation(path_lane_observation_x)
+        seq_lane_observations_y = parse_edge_observation(path_lane_observation_y)
+    # end if
+
     # grouping by with the lane-id
     dict_lane_observation_x = {}
-    dict_lane_observation_y = {}    
-    for _lane_id, _g_obj in itertools.groupby(sorted(seq_lane_observations_x, key=lambda x: x.lane_id), key=lambda x: x.lane_id):
-        dict_lane_observation_x[_lane_id] = list(_g_obj)
-    # end for
-    for _lane_id, _g_obj in itertools.groupby(sorted(seq_lane_observations_y, key=lambda x: x.lane_id), key=lambda x: x.lane_id):
-        dict_lane_observation_y[_lane_id] = list(_g_obj)
-    # end for
+    dict_lane_observation_y = {}
+    if vis_by_lane:
+        for _lane_id, _g_obj in itertools.groupby(sorted(seq_lane_observations_x, key=lambda x: x.lane_id), key=lambda x: x.lane_id):
+            dict_lane_observation_x[_lane_id] = list(_g_obj)
+        # end for
+        for _lane_id, _g_obj in itertools.groupby(sorted(seq_lane_observations_y, key=lambda x: x.lane_id), key=lambda x: x.lane_id):
+            dict_lane_observation_y[_lane_id] = list(_g_obj)
+        # end for
+    else:
+        for _edge_id, _g_obj in itertools.groupby(sorted(seq_lane_observations_x, key=lambda x: x.edge_id), key=lambda x: x.edge_id):
+            dict_lane_observation_x[_edge_id] = list(_g_obj)
+        # end for
+        for _edge_id, _g_obj in itertools.groupby(sorted(seq_lane_observations_y, key=lambda x: x.edge_id), key=lambda x: x.edge_id):
+            dict_lane_observation_y[_edge_id] = list(_g_obj)
+        # end for
+    # end if
 
     logger.info(f'Number of lanes X: {len(dict_lane_observation_x)}, Number of lanes Y: {len(dict_lane_observation_y)}')
  
     # plotting observation per lane
-    logger.info(f'Plotting lane observations...')
+    logger.info(f'Plotting observations...')
     for _lane_id in dict_lane_observation_x.keys():
         _seq_obs_x = dict_lane_observation_x.get(_lane_id, [])
         _seq_obs_y = dict_lane_observation_y.get(_lane_id, [])        
@@ -143,12 +210,15 @@ def main(path_lane_observation_x: Path,
 
 
 def test():
-    _path_lane_observation_x = Path('/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/sumo_cfg/0_debug/x/out/most.lane-observation.xml')
-    _path_lane_observation_y = Path('/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/sumo_cfg/0_debug/y/out/most.lane-observation.xml')
+    # _path_lane_observation_x = Path('/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/sumo_cfg/0_debug/x/out/most.lane-observation.xml')
+    # _path_lane_observation_y = Path('/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/sumo_cfg/0_debug/y/out/most.lane-observation.xml')
+    _path_lane_observation_x = Path('/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/sumo_cfg/0_debug/x/out/most.edge-observation.xml')
+    _path_lane_observation_y = Path('/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/sumo_cfg/0_debug/y/out/most.edge-observation.xml')
 
-    _path_dir_output = Path('/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/simple-png/0/lane-observations')
+
+    _path_dir_output = Path('/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/simple-png/0/edge-observations/count')
     _path_dir_output.mkdir(parents=True, exist_ok=True)
-    main(_path_lane_observation_x, _path_lane_observation_y, _path_dir_output)
+    main(_path_lane_observation_x, _path_lane_observation_y, _path_dir_output, vis_by_lane=False)
 
 
 
