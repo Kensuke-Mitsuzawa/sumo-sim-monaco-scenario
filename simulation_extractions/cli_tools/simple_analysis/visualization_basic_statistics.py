@@ -170,7 +170,7 @@ def __plot_heatmap(config_obj: Config,
     _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(10, 6))
     title_updated = dict_metric_names.get(_file_name, _file_name)
     _f.suptitle(f'Metric={title_updated}')
-    sns.heatmap(np.abs(array_sim_x_agg - array_sim_y_agg), ax=_ax, cmap='binary')
+    sns.heatmap(np.abs(array_sim_x_agg - array_sim_y_agg), ax=_ax, cmap='binary_r')
 
     # The x ticks must start from 1.
     ticks_label = [str(i) for i in range(1, array_sim_x_agg.shape[1] + 1)]
