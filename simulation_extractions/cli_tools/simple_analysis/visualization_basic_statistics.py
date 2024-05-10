@@ -23,10 +23,23 @@ import dataclasses
 import matplotlib.pyplot as plot
 import seaborn as sns
 
+from simulation_extractions.module_matplotlib import set_matplotlib_style
+
 import logzero
 logger = logzero.logger
 
 # ------------------------------------------------
+
+
+# Metric names for visualisations
+dict_metric_names = {
+    "edge_count": "traffic count",
+    "edge_density": "density",
+    "edge_time_loss": "time loss",
+    "edge_waiting_time": "waiting time",
+    "edge_travel_time": "travel time"
+}
+
 
 @dataclasses.dataclass
 class OutputConfig:
@@ -155,7 +168,8 @@ def __plot_heatmap(config_obj: Config,
 
 
     _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(10, 6))
-    _f.suptitle(f'Metric={_file_name}.')
+    title_updated = dict_metric_names.get(_file_name, _file_name)
+    _f.suptitle(f'Metric={title_updated}')
     sns.heatmap(np.abs(array_sim_x_agg - array_sim_y_agg), ax=_ax, cmap='binary')
 
     # The x ticks must start from 1.
@@ -231,15 +245,16 @@ def __plot_time_series_agg(config_obj: Config,
     
     input_file_name = Path(config_obj.Resoruce.input_x.path_simulation_output).stem
     
-    _ax.set_xlabel('Time')
+    _ax.set_xlabel('Simulation Step')
     _ax.set_ylabel('Value')
         
     # Set the locations of the xticks
     _ax.set_xticks(range(0, len(vector_label_timestamp), 100))
     # Set the labels of the xticks
-    _ax.set_xticklabels(vector_label_timestamp[::100], rotation=45)
+    _ax.set_xticklabels(vector_label_timestamp[::100], rotation=90)
     
-    _f.suptitle(f'Metric={input_file_name}. X: blue, Y: red.')
+    _metric_name_uodated = dict_metric_names.get(input_file_name, input_file_name)
+    _f.suptitle(f'Metric={_metric_name_uodated}. X: blue, Y: red.')
     _f.savefig(_f_file_png, bbox_inches='tight')
     logger.debug(f'Writing a time series graph into {_f_file_png}')
 
@@ -427,5 +442,7 @@ if __name__ == '__main__':
     __args.add_argument('--path_config', type=str, help='Path to toml visualization config file', required=True)
     __args = __args.parse_args()
     
+    set_matplotlib_style()
+
     # _path_config = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/cli_tools/simple_analysis/config_make_aggregation.toml')
     main(Path(__args.path_config))
