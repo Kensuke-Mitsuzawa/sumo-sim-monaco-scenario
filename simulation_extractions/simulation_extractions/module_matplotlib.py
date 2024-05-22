@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 
-def set_matplotlib_style():
+def set_matplotlib_style(is_use_latex: bool = True):
     SMALL_SIZE = 8
     MEDIUM_SIZE = 10
     BIGGER_SIZE = 20
@@ -19,4 +19,5 @@ def set_matplotlib_style():
     matplotlib.rc('legend', fontsize=BIGGER_SIZE)    # legend fontsize
     matplotlib.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
-    matplotlib.rcParams['text.usetex'] = True
+    if is_use_latex:
+        matplotlib.rcParams['text.usetex'] = True

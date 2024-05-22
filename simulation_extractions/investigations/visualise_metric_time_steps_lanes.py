@@ -10,6 +10,8 @@ import itertools
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from simulation_extractions.module_matplotlib import set_matplotlib_style
+
 import pandas as pd
 
 
@@ -223,4 +225,5 @@ def test():
 
 
 if __name__ == '__main__':
+    set_matplotlib_style(is_use_latex=False)
     test()

@@ -8,6 +8,7 @@ import seaborn as sns
 
 import numpy as np
 
+from simulation_extractions.module_matplotlib import set_matplotlib_style
 
 import logzero
 logger = logzero.logger
@@ -113,7 +114,7 @@ def test_one_road():
     path_array_x_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x")
     path_array_y_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y")
     name_metric = "edge_count"
-    edge_id = '152948#0'
+    edge_id = '152763'
     bucket_id = 3
     bucket_size = 500
 
@@ -131,4 +132,5 @@ def test_one_road():
 
 
 if __name__ == "__main__":
+    set_matplotlib_style()
     test_one_road()
