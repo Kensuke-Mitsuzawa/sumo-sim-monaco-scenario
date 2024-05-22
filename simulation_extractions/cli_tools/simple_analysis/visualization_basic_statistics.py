@@ -21,6 +21,7 @@ import numpy as np
 import dataclasses
 
 import matplotlib.pyplot as plot
+from matplotlib import ticker
 import seaborn as sns
 
 from simulation_extractions.module_matplotlib import set_matplotlib_style
@@ -157,7 +158,8 @@ def __aggregate_time_bucket(config_obj: Config,
 def __plot_heatmap(config_obj: Config,
                    array_sim_x_agg: np.ndarray,
                    array_sim_y_agg: np.ndarray,
-                   vector_timestep: np.ndarray,):
+                   vector_timestep: np.ndarray,
+                   y_ticks_label_per: int = 150):
     assert array_sim_x_agg.shape == array_sim_y_agg.shape, f'array_sim_x_agg.shape={array_sim_x_agg.shape}, array_sim_y_agg.shape={array_sim_y_agg.shape}'
 
     vector_label_timestamp = vector_timestep[:, 1]
@@ -167,14 +169,18 @@ def __plot_heatmap(config_obj: Config,
     _f_file_png = Path(config_obj.Resoruce.output.path_output_heatmap) / f'{_file_name}.png'
 
 
-    _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(10, 6))
+    _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(8, 8))
     title_updated = dict_metric_names.get(_file_name, _file_name)
     _f.suptitle(f'Metric={title_updated}')
-    sns.heatmap(np.abs(array_sim_x_agg - array_sim_y_agg), ax=_ax, cmap='binary_r')
+    sns.heatmap(np.abs(array_sim_x_agg - array_sim_y_agg), ax=_ax)
 
     # The x ticks must start from 1.
     ticks_label = [str(i) for i in range(1, array_sim_x_agg.shape[1] + 1)]
     _ax.set_xticklabels(ticks_label)
+    # spacing y-ticks and adding labels.
+    _y_ticks_label = [str(_i) if _i % y_ticks_label_per == 0 else '' for _i in range(array_sim_x_agg.shape[0])]
+    _ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+    _ax.set_yticklabels(_y_ticks_label)
     
     _f.savefig(_f_file_png, bbox_inches='tight')
     logger.debug(f'Writing a heatmap graph into {_f_file_png}')
