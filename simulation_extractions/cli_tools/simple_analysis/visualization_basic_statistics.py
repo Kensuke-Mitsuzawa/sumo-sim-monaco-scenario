@@ -190,7 +190,8 @@ def __plot_heatmap(config_obj: Config,
 def __plot_time_series_agg(config_obj: Config, 
                            array_sim_x: np.ndarray, 
                            vector_timestep: np.ndarray,
-                           array_sim_y: ty.Optional[np.ndarray]):
+                           array_sim_y: ty.Optional[np.ndarray],
+                           n_label_per: int = 300):
     """This function plots a time series graph.
     X-axis: time-stamp, Y-axis: aggregated values.
     """
@@ -257,7 +258,8 @@ def __plot_time_series_agg(config_obj: Config,
     # Set the locations of the xticks
     _ax.set_xticks(range(0, len(vector_label_timestamp), 100))
     # Set the labels of the xticks
-    _ax.set_xticklabels(vector_label_timestamp[::100], rotation=90)
+    # breakpoint()
+    _ax.set_xticklabels([str(__t) if __t % n_label_per == 0 else '' for __t in range(0, len(vector_label_timestamp), 100)], rotation=90)
     
     _metric_name_uodated = dict_metric_names.get(input_file_name, input_file_name)
     _f.suptitle(f'Metric={_metric_name_uodated}. X: blue, Y: red.')
