@@ -259,7 +259,7 @@ def __plot_time_series_agg(config_obj: Config,
     _ax.set_xticks(range(0, len(vector_label_timestamp), 100))
     # Set the labels of the xticks
     # breakpoint()
-    _ax.set_xticklabels([str(__t) if __t % n_label_per == 0 else '' for __t in range(0, len(vector_label_timestamp), 100)], rotation=90)
+    _ax.set_xticklabels([str(int(float(vector_label_timestamp[__t]))) if __t % n_label_per == 0 else '' for __t in range(0, len(vector_label_timestamp), 100)], rotation=90)
     
     _metric_name_uodated = dict_metric_names.get(input_file_name, input_file_name)
     _f.suptitle(f'Metric={_metric_name_uodated}. X: blue, Y: red.')
