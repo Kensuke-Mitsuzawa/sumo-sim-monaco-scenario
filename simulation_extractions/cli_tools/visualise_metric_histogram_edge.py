@@ -2,6 +2,7 @@ import typing as ty
 from pathlib import Path
 
 from matplotlib import pyplot as plt
+from matplotlib.font_manager import FontProperties
 
 import pandas as pd
 import seaborn as sns
@@ -12,6 +13,19 @@ from simulation_extractions.module_matplotlib import set_matplotlib_style
 
 import logzero
 logger = logzero.logger
+
+
+class MetricLabelConverter:
+    @staticmethod
+    def get_label(name_metric: str) -> str:
+        if name_metric == 'edge_waiting_time':
+            return 'Waiting Time'
+        elif name_metric == 'edge_count':
+            return 'Vehicle Count'
+        elif name_metric == 'edge_density':
+            return 'Density'
+        else:
+            raise ValueError(f'Unknown name_metric={name_metric}')
 
 
 def load_array_npz(path_array: Path) -> ty.Dict[str, np.ndarray]:
@@ -90,22 +104,35 @@ def main(
     
     # generating the histogram
     path_png = path_output_dir / f'{name_metric}_{edge_id}_{bucket_id}.png'
+    
     fig, ax = plt.subplots()
     
+    # ------------------------------------    
     avg_x = df['x'].mean()
     avg_y = df['y'].mean()
     
     std_x = df['x'].std()
     std_y = df['y'].std()
     
+    _label_plot = MetricLabelConverter.get_label(name_metric)
+    
     sns.histplot(data=df_melt, ax=ax, hue='variable', x='value', alpha=0.5, bins=50)
-    title_text = f'{name_metric} {edge_id} bucket_id={bucket_id}\nX:AVG={avg_x:.2f} STD={std_x:.2f}\nY:AVG={avg_y:.2f} STD={std_y:.2f}'
-    ax.set_title(title_text)
-    ax.set_xlabel(name_metric)
+    # ------------------------------------
+    # x, y, title labels
+    title_text = f'{_label_plot} at {edge_id}, bucket={bucket_id}\nX:AVG={avg_x:.2f} STD={std_x:.2f}\nY:AVG={avg_y:.2f} STD={std_y:.2f}'
+    ax.set_title(title_text, fontsize=FONTSIZE_LABEL)
+    ax.set_xlabel(_label_plot, fontsize=FONTSIZE_LABEL)
+    # ax.set_ylabel('Frequency (log)', fontsize=FONTSIZE_LABEL)
+    ax.set_ylabel('')
     ax.set_yscale('log')
+    # ------------------------------------
+    # ticks label
+    ax.tick_params(axis='x', labelsize=FONTSIZE_TICKS)
+    ax.tick_params(axis='y', labelsize=FONTSIZE_TICKS)
+    # ------------------------------------
+    # ------------------------------------
+    # saving figures
     fig.savefig(path_png, bbox_inches='tight')
-    
-    
     logger.debug(f'Saved {path_png}')
 
 
@@ -114,7 +141,8 @@ def test_one_road():
     path_array_x_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x")
     path_array_y_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y")
     name_metric = "edge_count"
-    edge_id = '152763'
+    # edge_id = '152763'
+    edge_id = '152777'
     bucket_id = 3
     bucket_size = 500
 
@@ -132,5 +160,9 @@ def test_one_road():
 
 
 if __name__ == "__main__":
+    FONTSIZE_LABEL = 25
+    FONTSIZE_TICKS = 25
+    font = FontProperties()
+    
     set_matplotlib_style()
     test_one_road()
