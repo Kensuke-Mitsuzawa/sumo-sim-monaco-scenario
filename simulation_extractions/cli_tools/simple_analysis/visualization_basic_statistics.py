@@ -21,6 +21,8 @@ import numpy as np
 import dataclasses
 
 import matplotlib.pyplot as plot
+from matplotlib.font_manager import FontProperties
+
 from matplotlib import ticker
 import seaborn as sns
 
@@ -34,11 +36,11 @@ logger = logzero.logger
 
 # Metric names for visualisations
 dict_metric_names = {
-    "edge_count": "traffic count",
-    "edge_density": "density",
-    "edge_time_loss": "time loss",
-    "edge_waiting_time": "waiting time",
-    "edge_travel_time": "travel time"
+    "edge_count": "Vehicle count",
+    "edge_density": "Density",
+    "edge_time_loss": "Time loss",
+    "edge_waiting_time": "Waiting time",
+    "edge_travel_time": "Travel time"
 }
 
 
@@ -159,7 +161,7 @@ def __plot_heatmap(config_obj: Config,
                    array_sim_x_agg: np.ndarray,
                    array_sim_y_agg: np.ndarray,
                    vector_timestep: np.ndarray,
-                   y_ticks_label_per: int = 150):
+                   y_ticks_label_per: int = 200):
     assert array_sim_x_agg.shape == array_sim_y_agg.shape, f'array_sim_x_agg.shape={array_sim_x_agg.shape}, array_sim_y_agg.shape={array_sim_y_agg.shape}'
 
     vector_label_timestamp = vector_timestep[:, 1]
@@ -171,7 +173,7 @@ def __plot_heatmap(config_obj: Config,
 
     _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(8, 8))
     title_updated = dict_metric_names.get(_file_name, _file_name)
-    _f.suptitle(f'Metric={title_updated}')
+    _f.suptitle(f'{title_updated}', fontsize=FONTSIZE_LABEL)
     sns.heatmap(np.abs(array_sim_x_agg - array_sim_y_agg), ax=_ax)
 
     # The x ticks must start from 1.
@@ -181,6 +183,9 @@ def __plot_heatmap(config_obj: Config,
     _y_ticks_label = [str(_i) if _i % y_ticks_label_per == 0 else '' for _i in range(array_sim_x_agg.shape[0])]
     _ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
     _ax.set_yticklabels(_y_ticks_label)
+    
+    _ax.tick_params('x', labelsize=FONTSIZE_TICKS)
+    _ax.tick_params('y', labelsize=FONTSIZE_TICKS)    
     
     _f.savefig(_f_file_png, bbox_inches='tight')
     logger.debug(f'Writing a heatmap graph into {_f_file_png}')
@@ -252,17 +257,21 @@ def __plot_time_series_agg(config_obj: Config,
     
     input_file_name = Path(config_obj.Resoruce.input_x.path_simulation_output).stem
     
-    _ax.set_xlabel('Simulation Step')
-    _ax.set_ylabel('Value')
+    # _ax.set_xlabel('Simulation Step')
+    # _ax.set_ylabel('Value')
+    _ax.set_xlabel('')
+    _ax.set_ylabel('')
         
     # Set the locations of the xticks
     _ax.set_xticks(range(0, len(vector_label_timestamp), 100))
     # Set the labels of the xticks
-    # breakpoint()
     _ax.set_xticklabels([str(int(float(vector_label_timestamp[__t]))) if __t % n_label_per == 0 else '' for __t in range(0, len(vector_label_timestamp), 100)], rotation=90)
+    # fontsize for ticks label
+    _ax.tick_params(axis='x', labelsize=FONTSIZE_TICKS)
+    _ax.tick_params(axis='y', labelsize=FONTSIZE_TICKS)
     
     _metric_name_uodated = dict_metric_names.get(input_file_name, input_file_name)
-    _f.suptitle(f'Metric={_metric_name_uodated}. X: blue, Y: red.')
+    _f.suptitle(f'{_metric_name_uodated}. X: blue, Y: red.', fontsize=FONTSIZE_LABEL)
     _f.savefig(_f_file_png, bbox_inches='tight')
     logger.debug(f'Writing a time series graph into {_f_file_png}')
 
@@ -451,6 +460,10 @@ if __name__ == '__main__':
     __args = __args.parse_args()
     
     set_matplotlib_style()
+
+    FONTSIZE_LABEL = 25
+    FONTSIZE_TICKS = 25
+    font = FontProperties()
 
     # _path_config = Path('/home/kensuke_mit/sumo-sim-monaco-scenario/simulation_extractions/cli_tools/simple_analysis/config_make_aggregation.toml')
     main(Path(__args.path_config))

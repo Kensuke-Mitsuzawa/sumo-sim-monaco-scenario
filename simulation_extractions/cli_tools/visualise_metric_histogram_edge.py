@@ -19,9 +19,9 @@ class MetricLabelConverter:
     @staticmethod
     def get_label(name_metric: str) -> str:
         if name_metric == 'edge_waiting_time':
-            return 'Waiting Time'
+            return 'Waiting time'
         elif name_metric == 'edge_count':
-            return 'Vehicle Count'
+            return 'Vehicle count'
         elif name_metric == 'edge_density':
             return 'Density'
         else:
@@ -141,8 +141,8 @@ def test_one_road():
     path_array_x_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x")
     path_array_y_dir = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y")
     name_metric = "edge_count"
-    # edge_id = '152763'
-    edge_id = '152777'
+    edge_id = '152763'
+    # edge_id = '152777'
     bucket_id = 3
     bucket_size = 500
 
