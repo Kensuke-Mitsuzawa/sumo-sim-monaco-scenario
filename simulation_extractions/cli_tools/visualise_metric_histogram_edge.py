@@ -21,7 +21,7 @@ class MetricLabelConverter:
         if name_metric == 'edge_waiting_time':
             return 'Waiting time'
         elif name_metric == 'edge_count':
-            return 'Vehicle count'
+            return 'Traffic count'
         elif name_metric == 'edge_density':
             return 'Density'
         else:

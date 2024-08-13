@@ -36,7 +36,7 @@ logger = logzero.logger
 
 # Metric names for visualisations
 dict_metric_names = {
-    "edge_count": "Vehicle count",
+    "edge_count": "Traffic count",
     "edge_density": "Density",
     "edge_time_loss": "Time loss",
     "edge_waiting_time": "Waiting time",
