@@ -199,14 +199,14 @@ def __plot_heatmap(config_obj: Config,
         __ax.set_xticklabels([__i_x_ticks + 1], fontsize=FONTSIZE_TICKS)
         if __i_x_ticks == 0:
             __ax.set_yticklabels(_y_ticks_label)
-            __ax.set_ylabel('road-id', fontsize=FONTSIZE_TICKS)
+            __ax.set_ylabel('road-id', fontsize=FONTSIZE_LABEL)
         else:
             pass
         # end if
     # end for
 
     title_updated = dict_metric_names.get(_file_name, _file_name)
-    f.suptitle(f'L1 Distance. {title_updated}', fontsize=FONTSIZE_LABEL)
+    f.suptitle(f'L1 Distance. Metric: {title_updated}', fontsize=FONTSIZE_LABEL)
 
     # f.suptitle(f'{t_vis_info[1]}. Metric: {_metric_name_updated}', fontsize=FONTSIZE_TICKS)
     # path_png_heatmap = path_png_variable_heat / f'heatmap-{t_vis_info[0]}.png'
@@ -483,7 +483,7 @@ if __name__ == '__main__':
     
     set_matplotlib_style()
 
-    FONTSIZE_LABEL = 25
+    FONTSIZE_LABEL = 30
     FONTSIZE_TICKS = 25
     font = FontProperties()
 
