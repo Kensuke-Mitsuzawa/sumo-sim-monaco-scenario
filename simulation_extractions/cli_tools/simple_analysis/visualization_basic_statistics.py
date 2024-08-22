@@ -12,6 +12,8 @@ from pathlib import Path
 import toml
 import math
 
+import pandas as pd
+
 import dacite
 import json
 import jsonlines
@@ -161,7 +163,7 @@ def __plot_heatmap(config_obj: Config,
                    array_sim_x_agg: np.ndarray,
                    array_sim_y_agg: np.ndarray,
                    vector_timestep: np.ndarray,
-                   y_ticks_label_per: int = 200):
+                   y_ticks_label_per: int = 150):
     assert array_sim_x_agg.shape == array_sim_y_agg.shape, f'array_sim_x_agg.shape={array_sim_x_agg.shape}, array_sim_y_agg.shape={array_sim_y_agg.shape}'
 
     vector_label_timestamp = vector_timestep[:, 1]
@@ -170,26 +172,46 @@ def __plot_heatmap(config_obj: Config,
     Path(config_obj.Resoruce.output.path_output_heatmap).mkdir(parents=True, exist_ok=True)
     _f_file_png = Path(config_obj.Resoruce.output.path_output_heatmap) / f'{_file_name}.png'
 
+    array_l1_diff = np.abs(array_sim_x_agg - array_sim_y_agg)
+    v_min = np.min(array_l1_diff)
+    v_max = np.max(array_l1_diff)
+    # plot a heatmap
+    f, ax_s = plot.subplots(nrows=1, ncols=array_l1_diff.shape[1], figsize=(1 * array_l1_diff.shape[1], 8))
 
-    _f, _ax = plot.subplots(nrows=1, ncols=1, figsize=(8, 8))
+    for __i_x_ticks, __ax in enumerate(ax_s):
+        if __i_x_ticks == (len(ax_s) - 1):
+            _is_legend = True
+        else:
+            _is_legend = False
+        # end if
+
+        if __i_x_ticks == 0:
+            _is_y_ticks = True
+            _y_ticks_label = [_i if _i % y_ticks_label_per == 0 else '' for _i in range(array_l1_diff.shape[0])]
+        else:
+            _is_y_ticks = False
+            _y_ticks_label = [''] * array_l1_diff.shape[0]
+        # end if
+
+        _df_vis = pd.DataFrame(array_l1_diff[:, [__i_x_ticks]])
+        logger.info(f'plotting heatmap for {__i_x_ticks}, shape={_df_vis.shape}')        
+        sns.heatmap(_df_vis, ax=__ax, yticklabels=_is_y_ticks, cbar=_is_legend, vmin=v_min, vmax=v_max)
+        __ax.set_xticklabels([__i_x_ticks + 1], fontsize=FONTSIZE_TICKS)
+        if __i_x_ticks == 0:
+            __ax.set_yticklabels(_y_ticks_label)
+            __ax.set_ylabel('road-id', fontsize=FONTSIZE_TICKS)
+        else:
+            pass
+        # end if
+    # end for
+
     title_updated = dict_metric_names.get(_file_name, _file_name)
-    _f.suptitle(f'{title_updated}', fontsize=FONTSIZE_LABEL)
-    sns.heatmap(np.abs(array_sim_x_agg - array_sim_y_agg), ax=_ax)
+    f.suptitle(f'L1 Distance. {title_updated}', fontsize=FONTSIZE_LABEL)
 
-    # The x ticks must start from 1.
-    ticks_label = [str(i) for i in range(1, array_sim_x_agg.shape[1] + 1)]
-    _ax.set_xticklabels(ticks_label)
-    # spacing y-ticks and adding labels.
-    _y_ticks_label = [str(_i) if _i % y_ticks_label_per == 0 else '' for _i in range(array_sim_x_agg.shape[0])]
-    _ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-    _ax.set_yticklabels(_y_ticks_label)
-    
-    _ax.tick_params('x', labelsize=FONTSIZE_TICKS)
-    _ax.tick_params('y', labelsize=FONTSIZE_TICKS)    
-    
-    _f.savefig(_f_file_png, bbox_inches='tight')
-    logger.debug(f'Writing a heatmap graph into {_f_file_png}')
-    
+    # f.suptitle(f'{t_vis_info[1]}. Metric: {_metric_name_updated}', fontsize=FONTSIZE_TICKS)
+    # path_png_heatmap = path_png_variable_heat / f'heatmap-{t_vis_info[0]}.png'
+    f.savefig(_f_file_png.as_posix(), bbox_inches='tight')
+    logger.debug(f'variable heatmap saved: {_f_file_png}')      
 
 
 def __plot_time_series_agg(config_obj: Config, 
