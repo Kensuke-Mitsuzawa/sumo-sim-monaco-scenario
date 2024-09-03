@@ -15,6 +15,10 @@ import logzero
 logger = logzero.logger
 
 
+"""This script generates a histogram plot for a specific edge and bucket."""
+
+
+
 class MetricLabelConverter:
     @staticmethod
     def get_label(name_metric: str) -> str:

@@ -23,6 +23,8 @@ The Monaco scenario does not have enough detectors.
 | make_heavy_blocking_scenario.py     | simulation-exe. | generating the SUMO simulation scenario files             | SUMO-related configs       | ./script_scenario_construction            | active         |
 | generate_kepler_interactive_tool.py | analysis        | generating geo-csv files for "Foursquare" and "Kepler.gl" | geo-csv                    | ./simulation_extractions/cli_tools/export | active         |
 | visualization_basic_statistics.py   | analysis        | visualising simple statistic                              | png files jsonl            | ./cli_tools/simple_analysis               | active         |
+| visualise_metric_histogram_edge.py              | analysis        | plotting a histogram for a specified edge-id and bucket            | png                        | ./cli_tools/simple_analysis | active |
+| visualise_metric_time_steps_lanes.py              | analysis        | plotting a set of X, Y time-series per either edge-id or lane-id | a set of png                        | ./cli_tools/simple_analysis | active |
 | generate_video.py                   | analysis        | generating a video file                                   | GIF and bunch of png files | ./cli_tools/simple_analysis               | ????           |
 | make_aggregation.py                 | analysis        |                                                           | png files                  | ./cli_tools/simple_analysis               |                |
 | visualize_network.py                | analysis        | visualising the study map                                 | png                        | ./cli_tools/export                        | not maintained |
