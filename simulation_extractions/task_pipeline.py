@@ -101,7 +101,7 @@ def __parse_file(args: DaskFuncArgs):
     
     # parsing edge file
     path_sumo_net = Path(args.config_obj.resources.path_dir_sumo_base_x) / args.config_obj.resources.name_net_xml
-    parse_road_observation_xml.parse_edge_observation(
+    parse_road_observation_xml.parse_edge_observation_and_writing_array(
         path_sumo_net_xml=path_sumo_net,
         path_edge_observation=args.path_edge_observation,
         path_work_dir=args.path_work_dir,
