@@ -1,79 +1,54 @@
 # What's this?
 
-This project is extracting sensor-information and trajectory-information from SUMO simulation,
-where the study scenario is "Monaco scenario".
+This project is for extracting sensor-information from SUMO simulations where the study scenario is ["Monaco scenario"](https://github.com/lcodeca/MoSTScenario).
 
-"sensor-information" is an array of `(|S|, |T|)`, where `S` is a set of sensors, `|T|` is a set of timestamps. 
-Note that I use `lane` as a sensor.
+The "sensor-information" is an array of `(|S|, |T|)`, where `S` is a set of sensors, `|T|` is a set of timestamps. 
+Note that I use `lane` and `edge` as a sensor.
 The Monaco scenario does not have enough detectors.
 
-"trajectory-information" is an array of `(|A|, |T|)`, where `A` is a set of agents (vehivle, public transportation etc.)
+<!-- "trajectory-information" is an array of `(|A|, |T|)`, where `A` is a set of agents (vehivle, public transportation etc.) -->
+
+# What can do?
+
+- Executing SUMO simulations.
+- Making an aggregated file.
+- Making visualizations.
+
+# Script Guide
+
+
+| Script Name                         | Usage Type      | Summary                                                   | Output                     | Directory                                 | status         |
+|-------------------------------------|-----------------|-----------------------------------------------------------|----------------------------|-------------------------------------------|----------------|
+| task_pipeline.py                    | simulation-exe. | executing SUMO simulation                                 | SUMO related-files         | .                                         | active         |
+| make_heavy_blocking_scenario.py     | simulation-exe. | generating the SUMO simulation scenario files             | SUMO-related configs       | ./script_scenario_construction            | active         |
+| generate_kepler_interactive_tool.py | analysis        | generating geo-csv files for "Foursquare" and "Kepler.gl" | geo-csv                    | ./simulation_extractions/cli_tools/export | active         |
+| visualization_basic_statistics.py   | analysis        | visualising simple statistic                              | png files jsonl            | ./cli_tools/simple_analysis               | active         |
+| generate_video.py                   | analysis        | generating a video file                                   | GIF and bunch of png files | ./cli_tools/simple_analysis               | ????           |
+| make_aggregation.py                 | analysis        |                                                           | png files                  | ./cli_tools/simple_analysis               |                |
+| visualize_network.py                | analysis        | visualising the study map                                 | png                        | ./cli_tools/export                        | not maintained |
+| export_to_gis_tools.py              | analysis        | generating JSON files for an external GIS tool            | JSON                       | ./simulation_extractions/cli_tools/export | not maintained |
+
 
 # Setup
 
 `poetry install`
 
-# What can do?
-
-1. Executing SUMO simulations.
-2. Making an aggregated file.
-3. Making visualizations.
-
 
 # How to use?
 
-## Executing simulations
+
+1. (Optional) Generating Scenario Files
+2. Executing Simulations
+
+## Generating Scenario Files
+
+You generate the scenario configuration files if you need it.
+
+## Executing Simulations
 
 A toml file is necessary. 
 `task_pipeline.py` is an interface.
 
-## Aggregation & Visualization
-
-The procedure is
-
-1. running `./cli_tools/simple_analysis/make_aggregation.py` and obtain jsonl format file.
-2. running a visualization script. `./cli_tools/export/*.py`. See the directory for more info.
-
-The first step generates a jsonl format file. An example line is,
-
-```
-{"lane_id": "-152191_0", "weight": 1.8016666666666667, "time_bucket": 8, "label": "Average during 4800 until 5400"}
-```
-.
-
-See the gallery section below.
-
-# Gallery: Map Visualization
-
-## Static PNG visualization
-
-`cli_tools/export/visualize_network.py` is the CUI interface for visualizing the study map.
-
-The example output is ![](./map_output.png).
-
-This script is able to highlight specific roads. You need a json file having a structure below,
-
-```
-{"lane_id": "-152191_0", "weight": 1.8016666666666667, "time_bucket": 8, "label": "Average during 4800 until 5400"}
-```
-
-Among these fields, the mandatory fields are "lane_id" and "weight".
-
-
-## Dynamic External Tools
-
-A script `cli_tools/export/export_to_gis_tools.py` generates an input file for either Kepler.GL and Google Earth. I strongly recommed using Kepler.GL as the analysis tool. Below, an example screenshot with Kepler.GL.
-
-![](./screenshot_kepler.png)
-
-
-The script requires a config file. See `configurations/config_export/config_export_gis_tools.toml` as the example configuration file.
-
-You have to specify a path to jsonline file. The jsonline file holds weight values as I show an example below.
-
-```
-{"lane_id": "-152191_0", "weight": 1.8016666666666667, "time_bucket": 8, "label": "Average during 4800 until 5400"}
-```
 
 
 
