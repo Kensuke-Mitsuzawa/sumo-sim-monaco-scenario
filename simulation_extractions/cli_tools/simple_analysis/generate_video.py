@@ -12,6 +12,10 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 from shapely.geometry import Polygon, LineString
 
+import xml.etree.ElementTree as ET
+
+from datetime import datetime, timedelta
+
 import imageio.v3 as iio
 
 from simulation_extractions import get_road_coordinate_simulation
@@ -32,11 +36,25 @@ class ArraySet(ty.NamedTuple):
     label_time: np.ndarray
 
 
+
+def __get_real_time(t: int,
+                    default_date: str = '2021-01-01') -> datetime:
+    # Parse the default date
+    base_datetime = datetime.strptime(default_date, '%Y-%m-%d')
+    
+    # Add the simulation time (in seconds) to the base datetime
+    real_time = base_datetime + timedelta(seconds=t)
+    return real_time
+
+
+
 def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_coordinate_simulation.RoadLaneObject],
                    edge_id2obs: ty.Dict[str, float],
                    path_output_png: Path,
                    time_step_at: int,
-                   max_value_color_normalisation: float = 1.0):
+                   max_value_color_normalisation: float = 1.0,
+                   is_real_time: bool = True,
+                   codename_cmap: str = 'seismic'):
     """Plotting the network.
     
     Parameters
@@ -62,7 +80,7 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_coordinate_simulation.Roa
     else:
         seq_values = list(edge_id2obs.values())
         norm = mcolors.Normalize(vmin=0, vmax=max_value_color_normalisation)
-        cmap = plt.get_cmap('hsv')
+        cmap = plt.get_cmap(codename_cmap)
         mappable = cm.ScalarMappable(norm=norm, cmap=cmap)
     # end if
     
@@ -131,25 +149,76 @@ def __plot_netowrk(seq_road_lane_obj: ty.List[get_road_coordinate_simulation.Roa
             print(__lane_obj.allow)
     # end for
     
-    ax.set_title('Road Network at time: {}'.format(time_step_at))
+    if is_real_time:
+        _time_label = __get_real_time(time_step_at).strftime('%H:%M:%S')
+    else:
+        _time_label = time_step_at
+    # end if
+    ax.set_title('Road Network at time: {}'.format(_time_label))
 
     f.savefig(path_output_png.as_posix())
+
+
+def __convert_matrix_to_zscore(matrix: np.ndarray,
+                               threshold_outlier: float = -1.0,
+                               threshold_standard_value: float = 95.0) -> np.ndarray:
+    # Flatten the matrix to a 1D array
+    flattened_matrix = matrix.flatten()
+
+    # Calculate the mean and standard deviation
+    mean = np.mean(flattened_matrix)
+    std = np.std(flattened_matrix)
+
+    # Compute the Z-scores
+    z_scores = (flattened_matrix - mean) / std
+    # Standard Score
+    standard_score = 10 * z_scores + 50
+
+    if threshold_outlier == -1.0:
+        outliers = standard_score > threshold_standard_value
+    else:        
+        # Identify outliers
+        outliers = np.abs(z_scores) > threshold_outlier
+    # end if
+
+    # Replace outliers with the median value
+    median_value = np.median(flattened_matrix)
+    flattened_matrix[outliers] = median_value
+
+    # Reshape the flattened matrix back to its original shape
+    matrix_clipped = flattened_matrix.reshape(matrix.shape)
+    assert matrix_clipped.shape == matrix.shape, f"matrix_clipped.shape: {matrix_clipped.shape} != matrix.shape: {matrix.shape}"
+    
+    return matrix_clipped
 
 
 def generate_snapshot(input_array_dataset: ArraySet, 
                       seq_road_geo_container: ty.List[get_road_coordinate_simulation.RoadLaneObject],
                       path_dir_snapshot: Path,
-                      path_gif_video: Path,
-                      timestep_per_snapshot: int = 100):
+                      path_video: Path,
+                      sim_time_begin: int,
+                      sim_time_end: int,
+                      threshold_standard_value: float = 95.0,
+                      timestep_per_snapshot: int = 60,
+                      snapshot_begin: int = 0,
+                      format_video: str = 'mp4'):
+    
+    assert format_video in ['mp4', 'gif'], f"format_video: {format_video} is not supported."
+    
     assert timestep_per_snapshot > 0, f"timestep_per_snapshot: {timestep_per_snapshot} must be greater than 0"
     
     n_timesteps = input_array_dataset.observation_array.sizes['time']
     
-    seq_path_pngs = []
+    array_z_score = __convert_matrix_to_zscore(input_array_dataset.observation_array.to_numpy(),
+                                               threshold_standard_value=threshold_standard_value)
     
-    for _t in tqdm(range(0, n_timesteps, timestep_per_snapshot)):
+    seq_path_pngs = []
+    max_value_color_normalisation = np.max(array_z_score)
+    
+    for _t in tqdm(range(snapshot_begin, n_timesteps, timestep_per_snapshot)):
         # 1D array at the time=_t
-        array_t = input_array_dataset.observation_array[:, _t]
+        # array_t = input_array_dataset.observation_array[:, _t]
+        array_t = array_z_score[:, _t]
         logger.debug(f"array_t: {_t} - {_t + timestep_per_snapshot}")
         
         # lane_id2observation_value
@@ -160,12 +229,14 @@ def generate_snapshot(input_array_dataset: ArraySet,
             # end if
         # end for
 
-        path_snapshot = path_dir_snapshot / f"snapshot_{_t:04d}.png"        
+        _sim_time_t = sim_time_begin + (_t * 10)
+
+        path_snapshot = path_dir_snapshot / f"snapshot_{_sim_time_t:04d}.png"
         __plot_netowrk(seq_road_geo_container, 
                        edge_id2obs, 
-                       time_step_at=_t, 
+                       time_step_at=_sim_time_t, 
                        path_output_png=path_snapshot, 
-                       max_value_color_normalisation=input_array_dataset.observation_array.max().item())
+                       max_value_color_normalisation=max_value_color_normalisation)
         logger.debug(f"Saved: {path_snapshot}")
         seq_path_pngs.append(path_snapshot)
     # end for
@@ -175,10 +246,16 @@ def generate_snapshot(input_array_dataset: ArraySet,
     for filename in seq_path_pngs:    
         seq_images.append(iio.imread(filename))    
     # end for
-    path_gif = path_gif_video
-    iio.imwrite(path_gif, seq_images, duration = 500, loop = 0)
-    logger.debug(f'Saved a GIF file at: {path_gif}')    
-
+    
+    if format_video == 'mp4':
+        # Save the frames as a video
+        iio.imwrite(path_video, seq_images, fps=3, codec='libx264')
+        logger.debug(f'Saved a MP4 file at: {path_video}')    
+    else:    
+        path_gif = path_video
+        iio.imwrite(path_gif, seq_images, duration = 500, loop = 0)
+        logger.debug(f'Saved a GIF file at: {path_gif}')    
+    # end if
     
 def _load_simulation_output(path_npz: Path, 
                             key_name_array: str,
@@ -206,10 +283,32 @@ def _load_simulation_output(path_npz: Path,
     return dataset
 
 
+def extract_sumo_simulation_time(path_sumo_xml: Path) -> ty.Tuple[int, int]:
+    # Parse the XML file
+    tree = ET.parse(path_sumo_xml)
+    root = tree.getroot()
+
+    # Find the <time> element
+    time_element = root.find('time')
+
+    if time_element is not None:
+        # Extract values from the <time> element
+        begin_value = time_element.find('begin').get('value')
+        # step_length_value = time_element.find('step-length').get('value')
+        end_value = time_element.find('end').get('value')
+        assert begin_value is not None, f"begin_value is None"
+        assert end_value is not None, f"end_value is None"
+
+        return int(begin_value), int(end_value)
+    else:
+        raise ValueError("The <time> element was not found in the XML file.")
+
+
 # TODO, annotation from the variable selection.
 def main(path_tomo_config: Path, 
+         path_sumo_net_xml: Path,
          path_sumo_xml: Path,
-         timestep_per_snapshot: int = 10):
+         timestep_per_snapshot: int = 60):
     """
     Args:
         path_tomo_config: a path to the configuration file.
@@ -217,7 +316,7 @@ def main(path_tomo_config: Path,
         timestep_per_snapshot: the number of timesteps per snapshot.
     """
     assert Path(path_tomo_config).exists(), f"path_tomo_config: {path_tomo_config} does not exist."
-    assert Path(path_sumo_xml).exists(), f"path_sumo_xml: {path_sumo_xml} does not exist."
+    assert Path(path_sumo_net_xml).exists(), f"path_sumo_net_xml: {path_sumo_net_xml} does not exist."
     
     config_obj = toml.load(path_tomo_config)
     logger.debug(f"config_obj: {config_obj}")
@@ -237,9 +336,12 @@ def main(path_tomo_config: Path,
     key_name_array = config_obj['Resoruce']['input_x']['key_name_lane_or_edge_id_vector']
     
     # loading geo coordinate of the roads
-    logger.debug(f"loading net info from path_sumo_xml: {path_sumo_xml}")
-    seq_road_container = get_road_coordinate_simulation.main(path_sumo_xml)
+    logger.debug(f"loading net info from path_sumo_xml: {path_sumo_net_xml}")
+    seq_road_container = get_road_coordinate_simulation.main(path_sumo_net_xml)
     logger.debug(f"Done")
+    
+    # extracting simulation time
+    sim_time_begin, sim_time_end = extract_sumo_simulation_time(path_sumo_xml)
     
     array_x = _load_simulation_output(path_input_x, 'array', key_name_array)
     array_y = _load_simulation_output(path_input_y, 'array', key_name_array)
@@ -256,8 +358,10 @@ def main(path_tomo_config: Path,
     generate_snapshot(diff_dataset,
                       seq_road_container, 
                       path_dir_l1_snapshot,
-                      path_gif_video=path_dir_output / 'l1_snapshot.gif',
-                      timestep_per_snapshot=timestep_per_snapshot)
+                      path_video=path_dir_output / 'l1_snapshot.mp4',
+                      timestep_per_snapshot=timestep_per_snapshot,
+                      sim_time_begin=sim_time_begin,
+                      sim_time_end=sim_time_end)
     
     # array x
     path_dir_simulation_x = path_dir_output / 'simulation_x_snapshot'
@@ -265,8 +369,10 @@ def main(path_tomo_config: Path,
     generate_snapshot(array_x,
                       seq_road_container, 
                       path_dir_simulation_x,
-                      path_gif_video=path_dir_output / 'sim_x.gif',
-                      timestep_per_snapshot=timestep_per_snapshot)
+                      path_video=path_dir_output / 'sim_x.mp4',
+                      timestep_per_snapshot=timestep_per_snapshot,
+                      sim_time_begin=sim_time_begin,
+                      sim_time_end=sim_time_end)
     
     # array y
     path_dir_simulation_y = path_dir_output / 'simulation_y_snapshot'
@@ -274,12 +380,19 @@ def main(path_tomo_config: Path,
     generate_snapshot(array_y,
                       seq_road_container, 
                       path_dir_simulation_y,
-                      path_gif_video=path_dir_output / 'sim_y.gif',
-                      timestep_per_snapshot=timestep_per_snapshot)
+                      path_video=path_dir_output / 'sim_y.mp4',
+                      timestep_per_snapshot=timestep_per_snapshot,
+                      sim_time_begin=sim_time_begin,
+                      sim_time_end=sim_time_end)
     
 
 if __name__ == "__main__":
-    __path_toml_config = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/cli_tools/simple_analysis/configurations/config_edge_observation.toml')
-    __path_sumo_xml = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/original_config/in/most.net.xml')
-    main(__path_toml_config, __path_sumo_xml, timestep_per_snapshot=50)
+    __path_toml_config = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/cli_tools/simple_analysis/configurations/config_edge_count.toml')
+    __path_sumo_net_xml = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/original_config/in/most.net.xml')
+    __path_sumo_xml = Path('/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/original_config/sumo_cfg.cfg')
+    main(
+        path_tomo_config=__path_toml_config, 
+        path_sumo_xml=__path_sumo_xml,
+        path_sumo_net_xml=__path_sumo_net_xml, 
+        timestep_per_snapshot=60)
 
