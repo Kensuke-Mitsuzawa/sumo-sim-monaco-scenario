@@ -191,7 +191,8 @@ def plot_lane_observation(path_save_png: Path,
                  hue='variable', 
                  data=df_count, 
                  ax=ax, 
-                 alpha=0.3)
+                 alpha=0.3,
+                 legend=False)
     
     for _t in range(t_start, t_end, size_bucket):
         if is_x_axis_real_time:
