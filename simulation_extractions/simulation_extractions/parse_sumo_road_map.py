@@ -19,6 +19,7 @@ from tqdm import tqdm
 
 import datetime
 import geojson
+import itertools
 
 
 
@@ -418,7 +419,9 @@ class KeplerAttributeGenerator(object):
         observation_every_step_per: int,
         size_time_bucket: int,
         lane_or_egde: str = 'lane',
-        date_timestamp: ty.Optional[datetime.date] = None) -> ty.List[GeoAttributeInformation]:
+        date_timestamp: ty.Optional[datetime.date] = None,
+        n_bucket_size: int = -1  # the number of buckets to be visualised. If -1, all buckets are visualised.
+        ) -> ty.List[GeoAttributeInformation]:
         """Generating the attribute of geo-info for Kepler.gl. This method is used for the variable weight model. 
         
         For kepler.gl, refer to the following link:
@@ -443,40 +446,72 @@ class KeplerAttributeGenerator(object):
             is_add_one = False
         # end if
 
-        
-        for weight_obj in seq_variable_weight_model:
+        if n_bucket_size == -1:
+            seq_bucket_index = list(set([d.time_bucket for d in seq_variable_weight_model]))
+        else:
+            seq_bucket_index = list(range(_bucket_index_start, n_bucket_size))
+        # end if
+
+        dict_bucket_index2weight = {
+            key: list(group)
+            for key, group in itertools.groupby(sorted(seq_variable_weight_model, key=lambda x: x.time_bucket), key=lambda x: x.time_bucket)
+        }
+
+        for __bucket_index in seq_bucket_index:
             # comment: the key name is 'lane_id', yet possibly "edge-id".
-
+            _seq_weight_obj = dict_bucket_index2weight.get(__bucket_index)
             # define a timestamp. Use time-bucket
-            if is_add_one:
-                _i_time_bucket: int = weight_obj.time_bucket + 1
-            else:
-                _i_time_bucket: int = weight_obj.time_bucket
+
+            if _seq_weight_obj is None:
+                if is_add_one:
+                    _i_time_bucket: int = __bucket_index + 1
+                else:
+                    _i_time_bucket: int = __bucket_index
+                # end if
+
+                __prop = GeoAttributeInformation(
+                    route_id="",
+                    geo_json="{}",
+                    value=-1,
+                    google_map_link="",
+                    description="No Variables",
+                    time_bucket=_i_time_bucket,
+                    timestamp=_date_timestamp_bucket_start)
+                seq_geojson_obj.append(__prop)
+                continue
             # end if
-            
-            _timestep_bucket_start = sim_time_start + (_i_time_bucket * size_time_bucket * observation_every_step_per)
-            _current_hour_min = self._get_simulation_world_time(_timestep_bucket_start)
-            _date_timestamp_bucket_start = f'{date_} {_current_hour_min}'
-            
-            # get the description
-            _description = weight_obj.label
-            _value = weight_obj.weight
-            
-            _lane_id_orig = weight_obj.route_id
-            
-            _geo_json = self._get_geo_json_object(
-                _lane_id_orig, lane_or_egde)
+            for __weight_obj in _seq_weight_obj:
+                if is_add_one:
+                    _i_time_bucket: int = __weight_obj.time_bucket + 1
+                else:
+                    _i_time_bucket: int = __weight_obj.time_bucket
+                # end if
 
-            _gmap_url = self._generate_google_map_link(weight_obj.route_id, lane_or_egde)
+                _timestep_bucket_start = sim_time_start + (__weight_obj.time_bucket * size_time_bucket * observation_every_step_per)
+                _current_hour_min = self._get_simulation_world_time(_timestep_bucket_start)
+                _date_timestamp_bucket_start = f'{date_} {_current_hour_min}'
+                
+                # get the description
+                _description = __weight_obj.label
+                _value = __weight_obj.weight
+                
+                _lane_id_orig = __weight_obj.route_id
+                
+                _geo_json = self._get_geo_json_object(
+                    _lane_id_orig, lane_or_egde)
 
-            __prop = GeoAttributeInformation(
-                route_id=_lane_id_orig,
-                geo_json=_geo_json,
-                value=_value,
-                google_map_link=_gmap_url,
-                description=_description,
-                time_bucket=_i_time_bucket,
-                timestamp=_date_timestamp_bucket_start)
-            seq_geojson_obj.append(__prop)
+                _gmap_url = self._generate_google_map_link(__weight_obj.route_id, lane_or_egde)
+
+                __prop = GeoAttributeInformation(
+                    route_id=_lane_id_orig,
+                    geo_json=_geo_json,
+                    value=_value,
+                    google_map_link=_gmap_url,
+                    description=_description,
+                    time_bucket=_i_time_bucket,
+                    timestamp=_date_timestamp_bucket_start)
+
+                seq_geojson_obj.append(__prop)
+            # end for
         # end for
         return seq_geojson_obj

@@ -26,13 +26,14 @@ def main(path_sumo_net_xml: Path,
          mode_generation: str,
          path_output_csv: Path,
          size_time_bucket: int,
+         n_bucket_size: int,
          path_variable_weight_jsonl: ty.Optional[Path],
          path_simulation_array: ty.Optional[Path],
          time_step_interval_export: ty.Optional[int],
          observation_every_step_per: int = 10,
          observation_threshold_value: float = 5.0,
          lane_or_egde: str = 'edge',
-         date_default: datetime.date = datetime.date(2023, 4, 1),
+         date_default: datetime.date = datetime.date(2024, 1, 1),
          aux_array_is_x_more_y: ty.Optional[np.ndarray] = None,):
     """
     Args:
@@ -110,7 +111,8 @@ def main(path_sumo_net_xml: Path,
             observation_every_step_per=observation_every_step_per,
             lane_or_egde=lane_or_egde,
             size_time_bucket=size_time_bucket,
-            date_timestamp=date_default)
+            date_timestamp=date_default,
+            n_bucket_size=n_bucket_size)
         # to dict
         seq_dict_obs = [_o.to_dict() for _o in observation_attr]
         pd.DataFrame(seq_dict_obs).to_csv(path_output_csv, index=False)
@@ -163,6 +165,7 @@ def _test_process_array_traffic_count():
     path_sumo_sim_xml = Path("/home/mitsuzaw/codes/dev/sumo-sim-monaco/simulation_extractions/sumo_configs/base/until_afternoon/heavy_blocking_scenario/sumo_cfg.cfg")
     
     size_time_bucket = 500
+    n_bucket_size = 8
     # -----------------------------------------------------
     # exporting variable weights to csv
     
@@ -178,7 +181,8 @@ def _test_process_array_traffic_count():
         path_variable_weight_jsonl=path_var_detection_mmd_cv_agg,
         size_time_bucket=size_time_bucket,
         path_simulation_array=None,
-        time_step_interval_export=None)
+        time_step_interval_export=None,
+        n_bucket_size=n_bucket_size)
     
     # MMD Alg one
     path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/output_jsons/edge_count/interpretable_mmd-algorithm_one.jsonl")
@@ -192,7 +196,8 @@ def _test_process_array_traffic_count():
         path_variable_weight_jsonl=path_var_detection_mmd_cv_agg,
         size_time_bucket=size_time_bucket,
         path_simulation_array=None,
-        time_step_interval_export=None)
+        time_step_interval_export=None,
+        n_bucket_size=n_bucket_size)
     
     # Wasserstein baseline
     path_var_detection_mmd_cv_agg = Path("/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/output_jsons/edge_count/wasserstein_independence-.jsonl")
@@ -206,15 +211,16 @@ def _test_process_array_traffic_count():
         path_variable_weight_jsonl=path_var_detection_mmd_cv_agg,
         size_time_bucket=size_time_bucket,
         path_simulation_array=None,
-        time_step_interval_export=None)
+        time_step_interval_export=None,
+        n_bucket_size=n_bucket_size)
     
     # -----------------------------------------------------
     # exporting observation data to csv
-    observation_threshold_value = 5
+    # observation_threshold_value = 5
     
-    path_array_x = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_count.npz")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_x.csv')
-    _mode_generation = 'observation'
+    # path_array_x = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/x/edge_count.npz")
+    # _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_x.csv')
+    # _mode_generation = 'observation'
     
     # main(
     #     path_sumo_net_xml=path_sumo_net_xml,
@@ -229,8 +235,8 @@ def _test_process_array_traffic_count():
     # )
 
 
-    path_array_y = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y/edge_count.npz")
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_y.csv')
+    # path_array_y = Path("/media/DATA/mitsuzaw/sumo-sim-monaco-scenario/until_afternoon/heavy-blocking-scenario/postprocess/0/y/edge_count.npz")
+    # _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_y.csv')
     # main(
     #     path_sumo_net_xml=path_sumo_net_xml,
     #     path_sumo_sim_xml=path_sumo_sim_xml,
@@ -246,21 +252,21 @@ def _test_process_array_traffic_count():
     
     # L1 distance in the observation mode.
     # I do not have the file yet, so, I create the file here in ad-hoc style.
-    path_temp_l1_array, array_is_x_more_y = _create_l1_distance_observation_ad_hoc(path_array_x, path_array_y)
-    _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_l1_distance.csv')
-    main(
-        path_sumo_net_xml=path_sumo_net_xml,
-        path_sumo_sim_xml=path_sumo_sim_xml,
-        path_simulation_array=path_temp_l1_array,
-        path_output_csv=_path_output_csv,
-        size_time_bucket=size_time_bucket,
-        time_step_interval_export=50,
-        mode_generation=_mode_generation,
-        path_variable_weight_jsonl=None,
-        observation_threshold_value=observation_threshold_value,
-        aux_array_is_x_more_y=array_is_x_more_y
-    )
-    path_temp_l1_array.unlink()
+    # path_temp_l1_array, array_is_x_more_y = _create_l1_distance_observation_ad_hoc(path_array_x, path_array_y)
+    # _path_output_csv = Path('/media/DATA/mitsuzaw/project_papers/project_data_centric/sumo_monaco/42/edge_count/kepler_csv/observation_l1_distance.csv')
+    # main(
+    #     path_sumo_net_xml=path_sumo_net_xml,
+    #     path_sumo_sim_xml=path_sumo_sim_xml,
+    #     path_simulation_array=path_temp_l1_array,
+    #     path_output_csv=_path_output_csv,
+    #     size_time_bucket=size_time_bucket,
+    #     time_step_interval_export=50,
+    #     mode_generation=_mode_generation,
+    #     path_variable_weight_jsonl=None,
+    #     observation_threshold_value=observation_threshold_value,
+    #     aux_array_is_x_more_y=array_is_x_more_y
+    # )
+    # path_temp_l1_array.unlink()
 
 
 def _test_process_array_waiting_time():
@@ -537,7 +543,7 @@ def _test_process_array_traveltime():
 
 
 if __name__ == '__main__':
-    # _test_process_array_traffic_count()
+    _test_process_array_traffic_count()
     # _test_process_array_waiting_time()
-    _test_process_array_traveltime()
+    # _test_process_array_traveltime()
     # _test_process_array_density()
