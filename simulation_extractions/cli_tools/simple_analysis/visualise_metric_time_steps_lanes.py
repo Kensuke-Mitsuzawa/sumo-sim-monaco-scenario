@@ -174,6 +174,7 @@ def plot_lane_observation(path_save_png: Path,
     # end if
     
     df_count['real_time'] = df_count['time'].apply(lambda x: __get_real_time(x))
+    df_count.fillna(0, inplace=True)
 
     # path of the count png
     path_png_count = path_save_png / f'{lane_id}.png'
@@ -191,25 +192,29 @@ def plot_lane_observation(path_save_png: Path,
                  hue='variable', 
                  data=df_count, 
                  ax=ax, 
-                 alpha=0.3,
-                 legend=False)
+                 alpha=0.6,
+                 legend=False,
+                 drawstyle='steps-post')
     
     for _t in range(t_start, t_end, size_bucket):
         if is_x_axis_real_time:
             ax.axvline(x=__get_real_time(_t), color='green', alpha=0.5)
+            # Set the x-axis date format
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%H-%M'))    
+            # Rotate the x-axis labels for better readability
+            plt.xticks(rotation=45)
         else:
             ax.axvline(x=_t, color='green', alpha=0.5)
+            plt.xticks(rotation=90)
         # end if
     # end for
     
-    # Set the x-axis date format
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H-%M'))    
-    # Rotate the x-axis labels for better readability
-    plt.xticks(rotation=45)
 
     ax.set_title(f'Count vehicles: {lane_id}')
     ax.set_xlabel('')
     ax.set_ylabel('Count vehicles')
+    # Set y-axis limit to start at 0
+    ax.set_ylim(bottom=0)    
     f.savefig(path_png_count.as_posix(), bbox_inches='tight')
     logger.info(f'Saved: {path_png_count}')
 
@@ -254,8 +259,8 @@ def main(path_lane_observation_x: Path,
     logger.info(f'Plotting observations...')
     for _lane_id in dict_lane_observation_x.keys():
         _seq_obs_x = dict_lane_observation_x.get(_lane_id, [])
-        _seq_obs_y = dict_lane_observation_y.get(_lane_id, [])        
-
+        _seq_obs_y = dict_lane_observation_y.get(_lane_id, [])
+        
         plot_lane_observation(path_dir_output, _lane_id, _seq_obs_x, _seq_obs_y)
     # end for
 

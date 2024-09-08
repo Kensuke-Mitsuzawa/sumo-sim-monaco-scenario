@@ -24,6 +24,7 @@ import dataclasses
 
 import matplotlib.pyplot as plot
 from matplotlib.font_manager import FontProperties
+import matplotlib.dates as mdates
 
 from matplotlib import ticker
 import seaborn as sns
@@ -214,11 +215,28 @@ def __plot_heatmap(config_obj: Config,
     logger.debug(f'variable heatmap saved: {_f_file_png}')      
 
 
+from datetime import datetime, timedelta
+def __get_real_time(t: int,
+                    default_date: str = '2021-01-01') -> datetime:
+    if isinstance(t, str):
+        t = int(float(t))
+    else:
+        pass
+    # end if
+    # Parse the default date
+    base_datetime = datetime.strptime(default_date, '%Y-%m-%d')
+    
+    # Add the simulation time (in seconds) to the base datetime
+    real_time = base_datetime + timedelta(seconds=t)
+    return real_time
+
+
 def __plot_time_series_agg(config_obj: Config, 
                            array_sim_x: np.ndarray, 
                            vector_timestep: np.ndarray,
                            array_sim_y: ty.Optional[np.ndarray],
-                           n_label_per: int = 300):
+                           n_label_per: int = 300,                         
+                           is_xlabel_real_time: bool = True):
     """This function plots a time series graph.
     X-axis: time-stamp, Y-axis: aggregated values.
     """
@@ -238,45 +256,68 @@ def __plot_time_series_agg(config_obj: Config,
     # Calculate average and standard deviation
     average_value_x = np.mean(array_sim_x, axis=0)
     std_value_x = np.std(array_sim_x, axis=0)
+    
+    if is_xlabel_real_time:
+        _seq_x_ticks_label = [__get_real_time(vector_label_timestamp[__t]) for __t in range(0, len(average_value_x))]
+    else:
+        _seq_x_ticks_label = [vector_label_timestamp[__t] for __t in range(0, len(average_value_x))]
+    # end if
+    
     # Create a simple plot
-    _ax.plot(average_value_x, label='Time Series', color='red', linestyle='--')
-    # _ax.axhline(y=std_value_x, color='red', linestyle='--', label='Average')
+    _ax.plot(_seq_x_ticks_label, 
+             average_value_x, 
+             label='Time Series', 
+             color='blue', 
+             linestyle='--')
     _min_std = average_value_x - std_value_x
     min_std = np.where(_min_std < 0, 0, _min_std)
-    _ax.fill_between(range(len(average_value_x)), 
+    _ax.fill_between(_seq_x_ticks_label, 
                      min_std, 
                      average_value_x + std_value_x, 
-                     color='red', 
+                     color='blue', 
                      alpha=0.1, label='Std Deviation')
     if interval_time_bucket is not None:
         # drawing vertical lines repsecting interval_time_bucket.
-        for i in range(0, len(average_value_x), interval_time_bucket):
-            _ax.axvline(x=i, color='green', linestyle='--')
+        for i in range(0, len(_seq_x_ticks_label), interval_time_bucket):
+            if is_xlabel_real_time:
+                _ax.axvline(x=_seq_x_ticks_label[i], color='green', linestyle='--')
+            else:
+                _ax.axvline(x=i, color='green', linestyle='--')
         # end for
-    # end for
+    # end if
 
-    # y-side
+    # # y-side
     if array_sim_y is not None:
         assert len(array_sim_y.shape) == 2, f'array_sim_y.shape={array_sim_y.shape}. Must be (n-sensors, n-timesteps)'
         average_value_y = np.mean(array_sim_y, axis=0)
         std_value_y = np.std(array_sim_y, axis=0)
-        _ax.plot(average_value_y, label='Time Series', color='blue', linestyle='--')
-        # _ax.axhline(y=std_value_y, color='blue', linestyle='--', label='Average')
+        _ax.plot(_seq_x_ticks_label, 
+                 average_value_y, 
+                 label='Time Series', 
+                 color='orange', 
+                 linestyle='--')
         _min_std = average_value_y - std_value_y
         min_std = np.where(_min_std < 0, 0, _min_std)        
-        _ax.fill_between(range(len(average_value_y)), 
+        _ax.fill_between(_seq_x_ticks_label, 
                          min_std, 
                          average_value_y + std_value_y, 
-                         color='blue', 
+                         color='orange', 
                          alpha=0.1, label='Std Deviation')
         if interval_time_bucket is not None:
             # drawing vertical lines repsecting interval_time_bucket.
-            for i in range(0, len(average_value_x), interval_time_bucket):
-                _ax.axvline(x=i, color='green', linestyle='--')
-            # end for
+            for i in range(0, len(_seq_x_ticks_label), interval_time_bucket):
+                if is_xlabel_real_time:
+                    _ax.axvline(x=_seq_x_ticks_label[i], color='green', linestyle='--')
+                else:
+                    _ax.axvline(x=i, color='green', linestyle='--')
+            # end for    
         # end if
     # end if
-    
+
+    if is_xlabel_real_time:
+        _ax.xaxis.set_major_formatter(mdates.DateFormatter('%H-%M'))
+    # end if
+        
     input_file_name = Path(config_obj.Resoruce.input_x.path_simulation_output).stem
     
     # _ax.set_xlabel('Simulation Step')
@@ -284,16 +325,19 @@ def __plot_time_series_agg(config_obj: Config,
     _ax.set_xlabel('')
     _ax.set_ylabel('')
         
-    # Set the locations of the xticks
-    _ax.set_xticks(range(0, len(vector_label_timestamp), 100))
-    # Set the labels of the xticks
-    _ax.set_xticklabels([str(int(float(vector_label_timestamp[__t]))) if __t % n_label_per == 0 else '' for __t in range(0, len(vector_label_timestamp), 100)], rotation=90)
+    if is_xlabel_real_time:
+        # Optionally, rotate the x-axis labels for better readability
+        plot.setp(_ax.get_xticklabels(), rotation=45, ha='right')
+    else:
+        _ax.set_xticklabels([str(int(float(vector_label_timestamp[__t]))) if __t % n_label_per == 0 else '' for __t in range(0, len(vector_label_timestamp), 100)], rotation=90)
+    # end if
+
     # fontsize for ticks label
     _ax.tick_params(axis='x', labelsize=FONTSIZE_TICKS)
     _ax.tick_params(axis='y', labelsize=FONTSIZE_TICKS)
     
     _metric_name_uodated = dict_metric_names.get(input_file_name, input_file_name)
-    _f.suptitle(f'{_metric_name_uodated}. X: blue, Y: red.', fontsize=FONTSIZE_LABEL)
+    _f.suptitle(f'{_metric_name_uodated}. X: blue, Y: orange.', fontsize=FONTSIZE_LABEL)
     _f.savefig(_f_file_png, bbox_inches='tight')
     logger.debug(f'Writing a time series graph into {_f_file_png}')
 
